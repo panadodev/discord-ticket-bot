@@ -1,18 +1,76 @@
 {
     "config": {
-        "ARCHIPEL_GUILD_ID": 868656215834624020,
-        "MANAGEMENT_ROLE": 1465357446930501653
-    },
-    "orgs": {
-        "willjum": {
-            "trial_admin": 1465341737886289972,
-            "trainee_admin": 1465342022683590726,
-            "admin": 1465342080401412228,
-            "senior_admin": 1465342125737639967,
-            "support": 1465342181110714379
-        },
-        "sanc": {
-            "support": 1465342275755446465
+        "MAIN_GUILD_ID": 1465076029314830571,
+        "MANAGEMENT_ROLE": 1465357446930501653,
+        "ticket_support_channels": [
+            1465341246771036345,
+            1465389884230336738
+        ],
+        "incoming_tickets_cat": 1465076153483264142,
+        "opened_tickets_cat": 1465340541440102421,
+        "orgs": {
+            "willjum": {
+                "roles": {
+                    "trial_admin": 1465341737886289972,
+                    "trainee_admin": 1465342022683590726,
+                    "admin": 1465342080401412228,
+                    "senior_admin": 1465342125737639967,
+                    "support": 1465342181110714379
+                }
+            },
+            "sanc": {
+                "roles": {
+                    "support": 1465342275755446465
+                }
+            },
+            "tickets": {
+                "support": {
+                    "button_name": "Support Ticket",
+                    "button_id": "support_ticket",
+                    "designated": "support",
+                    "ticket_channel_icon": "🟢",
+                    "viewable_by": [
+                        "support",
+                        "trial_admin",
+                        "trainee_admin",
+                        "admin",
+                        "senior_admin"
+                    ],
+                    "questions": [
+                        "Hi, please submit your steam id.",
+                        "Please describe your issue in detail."
+                    ]
+                },
+                "player_report": {
+                    "button_name": "Player Report",
+                    "button_id": "player_report",
+                    "designated": "admin",
+                    "ticket_channel_icon": "🟠",
+                    "viewable_by": [
+                        "trial_admin",
+                        "trainee_admin",
+                        "admin",
+                        "senior_admin"
+                    ],
+                    "questions": [
+                        "Hi, please submit your steam id.",
+                        "Please provide the steam id/s (76561198000000000) of the user/s you are reporting and why they are being reported."
+                    ]
+                },
+                "ban_appeals": {
+                    "button_name": "Ban Appeal",
+                    "button_id": "ban_appeal",
+                    "designated": "senior_admin",
+                    "ticket_channel_icon": "🔵",
+                    "viewable_by": [
+                        "senior_admin"
+                    ],
+                    "questions": [
+                        "Hi, please submit your steam id.",
+                        "Please describe the reason for your appeal."
+                    ]
+                }
+            }
         }
     }
 }

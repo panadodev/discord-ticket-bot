@@ -10,9 +10,11 @@ import sentry_sdk
 from discord.ext import commands
 from dotenv import load_dotenv
 from sentry_sdk.integrations.logging import EventHandler
-from tortoise import Tortoise
 
-from utils.discord_utils import DiscordManager
+from utils.discord_utils import DiscordManager, TicketSupportEmbedManager
+
+# from tortoise import Tortoise
+
 
 # Load environment variables
 load_dotenv()
@@ -51,20 +53,67 @@ async def on_ready():
     await bot.wait_until_ready()
 
     try:
+        # Setup persistent views and ticket embed manager
+        ticket_embed_manager = TicketSupportEmbedManager(bot)
 
-        archipel_guild_id = os.getenv("ARCHIPEL_GUILD_ID")
-        if not archipel_guild_id:
-            logger.error("ARCHIPEL_GUILD_ID is not set in environment variables.")
+        if not ticket_embed_manager.config:
+            logger.error("Failed to load config")
             return
-        archipel_guild_id = int(archipel_guild_id)
+
+        archipel_guild_id = ticket_embed_manager.config.get("MAIN_GUILD_ID")
+        if not archipel_guild_id:
+            logger.error("MAIN_GUILD_ID is not set in config.json")
+            return
+
         synced = await bot.tree.sync(guild=discord.Object(id=archipel_guild_id))
         logger.info(f"✅ Synced {len(synced)} command(s) to guild {archipel_guild_id}")
 
         # Debug: Print command names
         for cmd in synced:
             logger.info(f"🔧 Command synced: {cmd.name}")
+
+        # Setup persistent view
+        persistent_view = ticket_embed_manager.create_persistent_view()
+        bot.add_view(persistent_view)
+        logger.info("Added persistent view for ticket buttons")
+
+        # Get ticket support channels from config
+        if ticket_embed_manager.config:
+            ticket_channels = ticket_embed_manager.config.get(
+                "ticket_support_channels", []
+            )
+
+            for channel_id in ticket_channels:
+                channel = bot.get_channel(channel_id)
+                if channel:
+                    # Check if embed already exists (check last message)
+                    messages = [msg async for msg in channel.history(limit=1)]
+
+                    # Only create if channel is empty or last message isn't from the bot
+                    if not messages or messages[0].author.id != bot.user.id:
+                        await ticket_embed_manager.create_ticket_support_embed(channel)
+                        logger.info(
+                            f"Created ticket support embed in channel {channel_id}"
+                        )
+                    else:
+                        logger.info(
+                            f"ℹTicket support embed already exists in channel {channel_id}"
+                        )
+                else:
+                    logger.error(f"Could not find channel with ID {channel_id}")
+
     except Exception as e:
-        logger.error(f"❌ Failed to sync commands or add cog: {e}")
+        logger.error(f"Failed to sync commands or add cog: {e}")
+
+
+@bot.event
+async def on_command_error(ctx, error):
+    """Suppress command not found errors for DM messages"""
+    if isinstance(error, commands.CommandNotFound):
+        # Ignore command not found errors (happens with empty prefix in DMs)
+        return
+    # Log other errors
+    logger.error(f"Command error: {error}")
 
 
 # Run the bot in a background thread
@@ -76,29 +125,20 @@ def start_discord_bot():
     bot.run(DISCORD_TOKEN)
 
 
-async def init_tortoise():
+"""async def init_tortoise():
     uri = os.getenv("PG_URI")
     await Tortoise.init(
         db_url=uri,
         modules={"models": ["utils.sql_utils"]},
     )
     await Tortoise.generate_schemas()
-    logger.info("Tortoise ORM initialized and schemas generated.")
+    logger.info("Tortoise ORM initialized and schemas generated.")"""
 
 
-async def startup_event():
-    logger.info("Discord app...")
-    await init_tortoise()
-
-    # Initialize Discord bot in a background thread
+if __name__ == "__main__":
+    logger.info("Starting Discord bot...")
     DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
     if not DISCORD_TOKEN:
         logger.error("DISCORD_TOKEN is not set in environment variables.")
-        return
     else:
-        DISCORD_TOKEN = str(DISCORD_TOKEN)
-
-    loop = asyncio.get_event_loop()
-    loop.create_task(bot.start(DISCORD_TOKEN))
-
-    logger.info("Startup event completed.")
+        bot.run(DISCORD_TOKEN)
