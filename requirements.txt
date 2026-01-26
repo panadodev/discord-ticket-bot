@@ -1,0 +1,8 @@
+python-dotenv
+motor
+aiohttp
+asyncpg
+tortoise-orm[asyncpg]
+discord
+Brotli
+sentry_sdk
