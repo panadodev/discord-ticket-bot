@@ -7,7 +7,6 @@
             1465389884230336738
         ],
         "incoming_tickets_cat": 1465076153483264142,
-        "opened_tickets_cat": 1465340541440102421,
         "orgs": {
             "willjum": {
                 "roles": {
@@ -16,19 +15,23 @@
                     "admin": 1465342080401412228,
                     "senior_admin": 1465342125737639967,
                     "support": 1465342181110714379
-                }
+                },
+                "guild": 1465076029314830571
             },
             "sanc": {
                 "roles": {
                     "support": 1465342275755446465
-                }
+                },
+                "guild": 123
             },
             "tickets": {
                 "support": {
+                    "log_channel": 1465434489168728126,
                     "button_name": "Support Ticket",
                     "button_id": "support_ticket",
                     "designated": "support",
                     "ticket_channel_icon": "🟢",
+                    "embed_color": "#ffffff",
                     "viewable_by": [
                         "support",
                         "trial_admin",
@@ -42,10 +45,12 @@
                     ]
                 },
                 "player_report": {
+                    "log_channel": 1465434398131228836,
                     "button_name": "Player Report",
                     "button_id": "player_report",
                     "designated": "admin",
                     "ticket_channel_icon": "🟠",
+                    "embed_color": "#ff8000",
                     "viewable_by": [
                         "trial_admin",
                         "trainee_admin",
@@ -58,10 +63,12 @@
                     ]
                 },
                 "ban_appeals": {
+                    "log_channel": 1465341298830479485,
                     "button_name": "Ban Appeal",
                     "button_id": "ban_appeal",
                     "designated": "senior_admin",
                     "ticket_channel_icon": "🔵",
+                    "embed_color": "#0000ff",
                     "viewable_by": [
                         "senior_admin"
                     ],

@@ -1,6 +1,7 @@
 # @author: Panado (yesdotcom), 2026
 
 import asyncio
+import json
 import logging
 import os
 import sys
@@ -11,7 +12,7 @@ from discord.ext import commands
 from dotenv import load_dotenv
 from sentry_sdk.integrations.logging import EventHandler
 
-from utils.discord_utils import DiscordManager, TicketSupportEmbedManager
+from utils.discord_utils import CloseTicketButton, TicketSupportEmbedManager
 
 # from tortoise import Tortoise
 
@@ -40,8 +41,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger("main.py")
 
-# Instantiate DiscordManager (not the bot itself, just API utilities)
-discord_manager = DiscordManager()
 
 # Initialize Discord bot
 intents = discord.Intents.all()
@@ -77,6 +76,13 @@ async def on_ready():
         bot.add_view(persistent_view)
         logger.info("Added persistent view for ticket buttons")
 
+        # Add persistent view for close ticket buttons
+        close_ticket_view = discord.ui.View(timeout=None)
+        close_button = CloseTicketButton(bot=bot)
+        close_ticket_view.add_item(close_button)
+        bot.add_view(close_ticket_view)
+        logger.info("Added persistent view for close ticket buttons")
+
         # Get ticket support channels from config
         if ticket_embed_manager.config:
             ticket_channels = ticket_embed_manager.config.get(
@@ -104,6 +110,154 @@ async def on_ready():
 
     except Exception as e:
         logger.error(f"Failed to sync commands or add cog: {e}")
+
+
+@bot.event
+async def on_message(message: discord.Message):
+    """Handle message forwarding between tickets and DMs"""
+    # Ignore bot's own messages
+    if message.author.bot:
+        return
+
+    # Process commands first
+    await bot.process_commands(message)
+
+    # Import needed utilities
+    from utils.discord_utils import find_user_ticket, load_config, users_in_process
+
+    config = load_config()
+    if not config:
+        return
+
+    # Handle DM messages from users (forward to their ticket)
+    if isinstance(message.channel, discord.DMChannel):
+        # Don't forward if user is in ticket creation process
+        if message.author.id in users_in_process:
+            return
+
+        # Find the user's guild (assuming main guild from config)
+        main_guild_id = config.get("MAIN_GUILD_ID")
+        if not main_guild_id:
+            logger.error("MAIN_GUILD_ID not set in config")
+            return
+
+        guild = bot.get_guild(main_guild_id)
+        if not guild:
+            logger.error(f"Could not find guild with ID {main_guild_id}")
+            return
+
+        # Find user's most recent ticket
+        ticket_channel = await find_user_ticket(guild, message.author.id)
+        if not ticket_channel:
+            # User doesn't have a ticket
+            logger.debug(
+                f"User {message.author.name} has no open ticket to forward DM to."
+            )
+            return
+
+        # Forward the message to the ticket channel
+        try:
+            embed = discord.Embed(
+                description=message.content,
+                color=discord.Color.blue(),
+            )
+            embed.set_author(
+                name=f"{message.author.name}",
+                icon_url=message.author.display_avatar.url,
+            )
+
+            # Handle attachments
+            if message.attachments:
+                for attachment in message.attachments:
+                    embed.add_field(
+                        name="Attachment",
+                        value=f"[{attachment.filename}]({attachment.url})",
+                        inline=False,
+                    )
+
+            await ticket_channel.send(embed=embed)
+            logger.info(
+                f"Forwarded DM from {message.author.name} to ticket {ticket_channel.name}"
+            )
+            # react to message
+            await message.add_reaction("✅")
+
+        except Exception as e:
+            logger.error(f"Failed to forward DM to ticket: {e}")
+
+    # Handle messages in ticket channels (forward to ticket owner if prefixed with "!reply")
+    elif isinstance(message.channel, discord.TextChannel):
+        # Check if message is in a ticket channel
+        channel_name = message.channel.name
+
+        # Ticket channels end with user ID
+        if "-" not in channel_name:
+            logger.debug(f"Channel {channel_name} is not a ticket channel.")
+            return
+
+        parts = channel_name.split("-")
+        try:
+            ticket_owner_id = int(parts[-1])
+        except (ValueError, IndexError):
+            logger.debug(f"Channel {channel_name} is not a valid ticket channel.")
+            return
+
+        # Check if message starts with !r prefix
+        if not message.content.startswith("!r"):
+            logger.debug("Message does not start with !r prefix; not forwarding.")
+            return
+
+        # Remove the prefix from the message
+        message_content = message.content[2:].strip()
+
+        # Forward to ticket owner's DM
+        try:
+            ticket_owner = await bot.fetch_user(ticket_owner_id)
+            ticket_channel = message.channel
+            ticket_metadata = (
+                json.loads(ticket_channel.topic) if ticket_channel.topic else None
+            )
+
+            ticket_color = ticket_metadata.get("color") if ticket_metadata else None
+
+            embed = discord.Embed(
+                description=message_content,
+                color=(
+                    discord.Color.green()
+                    if not ticket_color
+                    else discord.Color(int(ticket_color.lstrip("#"), 16))
+                ),
+            )
+            embed.set_author(
+                name=f"{message.author.global_name}",
+                icon_url=message.author.display_avatar.url,
+            )
+
+            # Handle attachments
+            if message.attachments:
+                for attachment in message.attachments:
+                    embed.add_field(
+                        name="Attachment",
+                        value=f"[{attachment.filename}]({attachment.url})",
+                        inline=False,
+                    )
+
+            await ticket_owner.send(embed=embed)
+
+            # delete message and replace with the received embed
+            await message.delete()
+            await message.channel.send(embed=embed)
+
+            logger.info(
+                f"Forwarded ticket message from {message.author.name} to {ticket_owner.name}"
+            )
+
+        except discord.Forbidden:
+            logger.warning(f"Cannot send DM to ticket owner (ID: {ticket_owner_id})")
+            await message.add_reaction("❌")
+        except Exception as e:
+            logger.error(f"Failed to forward ticket message to DM: {e}")
+            await message.add_reaction("❌")
 
 
 @bot.event

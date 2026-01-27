@@ -1,8 +1,10 @@
 import asyncio
+import io
 import json
 import logging
 
 import discord
+import DiscordTranscript
 from discord.ext import commands
 from dotenv import load_dotenv
 
@@ -149,7 +151,7 @@ class TicketButton(discord.ui.Button):
 
         await dm_channel.send(
             "📝 **Ticket Creation Process**\n"
-            "Please answer the following questions. You have 10 minutes to respond to each question.\n"
+            "Please answer the following questions. You have 10 minutes to respond to each question. Please note the system is still a WIP, apologies for any inconvenience.\n"
             "Type `cancel` at any time to cancel the ticket creation."
         )
 
@@ -273,13 +275,31 @@ class TicketButton(discord.ui.Button):
                         read_message_history=True,
                     )
 
+        button_name = ticket_config.get("button_name", "Unknown Ticket")
+        button_id = ticket_config.get("button_id", "unknown_ticket")
+        origin_org = guild_clean
+        created_at = int(discord.utils.utcnow().timestamp())
+        ticket_metadata = {
+            "ticket_config": {
+                "button_name": button_name,
+                "button_id": button_id,
+                "log_channel": ticket_config.get("log_channel", None),
+                "ticket_channel_icon": ticket_icon,
+                "ticket_from_org": origin_org,
+                "viewable_by": ticket_config.get("viewable_by", []),
+                "created_at": created_at,
+                "created_by": user.id,
+                "color": ticket_config.get("embed_color", "#ffffff"),
+            }
+        }
+
         # Create the ticket channel with emoji icon
         try:
             ticket_channel = await guild.create_text_channel(
                 name=full_channel_name,
                 category=incoming_category,
                 overwrites=overwrites,
-                topic=f"Ticket for {user.name} ({user.id})",
+                topic=json.dumps(ticket_metadata),
             )
             logger.info(
                 f"✅ Created ticket channel: {ticket_channel.name} (ID: {ticket_channel.id})"
@@ -292,23 +312,29 @@ class TicketButton(discord.ui.Button):
 
         # Create summary embed
         embed = discord.Embed(
-            title=f"🎫 {ticket_config['button_name']}",
-            description=f"Ticket created by {user.mention}",
-            color=discord.Color.green(),
-            timestamp=discord.utils.utcnow(),
+            title=f"{ticket_config['button_name']}",
+            description=f"{user.mention}",
+            color=discord.Color(
+                int(ticket_config.get("embed_color", "#ffffff").lstrip("#"), 16)
+            ),
         )
-
-        embed.add_field(name="User", value=f"{user.name} ({user.id})", inline=False)
+        embed.footer.text = f"{guild.name}-{user.id}-{user.name}"
 
         # Add questions and answers
         questions = ticket_config.get("questions", [])
         for i, (question, answer) in enumerate(zip(questions, answers), 1):
-            embed.add_field(name=f"Q{i}: {question}", value=answer, inline=False)
+            embed.add_field(name=f"{question}:", value=answer, inline=False)
+
+        # Create close button view
+        close_button = CloseTicketButton(self.bot)
+        view = discord.ui.View(timeout=None)
+        view.add_item(close_button)
 
         # Send the summary
         try:
             message = await ticket_channel.send(
-                content=f"{user.mention} Your ticket has been created!", embed=embed
+                embed=embed,
+                view=view,
             )
             logger.info(f"✅ Sent ticket summary embed to {ticket_channel.name}")
         except Exception as e:
@@ -317,10 +343,7 @@ class TicketButton(discord.ui.Button):
         # Notify user in DM
         try:
             dm_channel = await user.create_dm()
-            await dm_channel.send(
-                f"✅ Your ticket has been created: {ticket_channel.mention}\n"
-                f"Server staff will assist you shortly."
-            )
+            await dm_channel.send(f"Server staff will assist you shortly.")
             logger.info(f"✅ Sent ticket confirmation DM to {user.name}")
         except discord.Forbidden:
             logger.warning(f"⚠️ Cannot send DM to {user.name} - DMs are disabled")
@@ -328,6 +351,96 @@ class TicketButton(discord.ui.Button):
             logger.error(f"❌ Failed to send DM notification: {e}")
 
         logger.info(f"Created ticket channel {channel_name} for user {user.name}")
+
+
+class CloseTicketButton(discord.ui.Button):
+    def __init__(self, bot: commands.Bot):
+        super().__init__(
+            label="Close Ticket",
+            custom_id="close_ticket_button",
+            style=discord.ButtonStyle.danger,
+        )
+        self.bot = bot
+
+    async def callback(self, interaction: discord.Interaction):
+        """Handle close ticket button click"""
+        channel = interaction.channel
+
+        # Check if the channel is a ticket channel
+        if not isinstance(channel, discord.TextChannel):
+            await interaction.response.send_message(
+                "❌ This can only be used in a ticket channel.", ephemeral=True
+            )
+            return
+
+        # Verify the button was clicked by authorized user or staff
+        # Extract the user_id from the channel name (format: emoji-tickettype-username-guild-userid)
+        channel_name_parts = channel.name.split("-")
+        try:
+            ticket_owner_id = int(channel_name_parts[-1])
+        except (ValueError, IndexError):
+            await interaction.response.send_message(
+                "❌ Could not determine ticket owner.", ephemeral=True
+            )
+            return
+
+        # Check if the person clicking is the ticket owner or has manage channels permission
+        if (
+            interaction.user.id != ticket_owner_id
+            and not interaction.user.guild_permissions.manage_channels
+        ):
+            await interaction.response.send_message(
+                "❌ Only the ticket owner or staff can close this ticket.",
+                ephemeral=True,
+            )
+            return
+
+        await interaction.response.send_message(
+            f"Ticket is being closed by {interaction.user.mention}, generating transcript...",
+            ephemeral=False,
+        )
+
+        logger.info(f"Ticket {channel.name} closed by {interaction.user.name}")
+
+        # Delete the channel after a short delay
+        try:
+
+            # log ticket using the channel's topic metadata
+            channel_topic = channel.topic
+            if channel_topic and channel_topic.startswith("{"):
+                ticket_metadata = json.loads(channel_topic)
+                # generate transcript
+                result = await DiscordTranscript.export(channel, bot=self.bot)
+                if not result:
+                    logger.error("Failed to generate transcript.")
+                    return
+                # send transcript as attachment to a log channel
+                log_channel = ticket_metadata["ticket_config"].get("log_channel")
+                if log_channel:
+                    log_ch = interaction.guild.get_channel(log_channel)
+                    if log_ch:
+                        transcript_file = discord.File(
+                            io.BytesIO(result.encode()),
+                            filename=f"transcript-{channel.name}.html",
+                        )
+                        ticket_created_at = ticket_metadata["ticket_config"].get(
+                            "created_at"
+                        )
+                        now = int(discord.utils.utcnow().timestamp())
+
+                        ticket_duration = (
+                            (now - ticket_created_at) / 3600 if ticket_created_at else 0
+                        )
+                        await log_ch.send(
+                            content=f"Transcript for closed ticket {channel.name} \n Duration: {round(ticket_duration, 2)} hours.",
+                            file=transcript_file,
+                        )
+                        await asyncio.sleep(5)
+                        await channel.delete()
+                        logger.info(f"✅ Deleted ticket channel: {channel.name}")
+
+        except Exception as e:
+            logger.error(f"❌ Failed to delete ticket channel {channel.name}: {e}")
 
 
 class TicketSupportEmbedManager:
@@ -380,13 +493,22 @@ class TicketSupportEmbedManager:
         return view
 
 
-class DiscordManager:
-    def __init__(self, bot=None):
-        self.bot = bot
-        self.config = load_config()
+async def find_user_ticket(
+    guild: discord.Guild, user_id: int
+) -> discord.TextChannel | None:
+    """Find the most recently created ticket channel for a user"""
+    user_tickets = []
 
+    for channel in guild.text_channels:
+        # Channel name format: emoji-tickettype-username-guild-userid
+        if channel.name.endswith(str(user_id)):
+            user_tickets.append(channel)
 
-# Create ticket support embed in the ticket_support_channels if not exists
+    if not user_tickets:
+        return None
+
+    # Return the most recently created ticket (highest ID = most recent)
+    return max(user_tickets, key=lambda c: c.id)
 
 
 class DiscordCommands(commands.Cog):

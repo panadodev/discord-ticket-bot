@@ -35,7 +35,7 @@ class tickets(Model):
 class DatabaseOperations:
 
     @staticmethod
-    async def log_pvp(data: dict):
+    async def log_ticket(data: dict):
         await tickets.create(
             type="pvp",
             guid=data["guid"],
