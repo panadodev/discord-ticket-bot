@@ -153,6 +153,10 @@ async def on_message(message: discord.Message):
             logger.debug(
                 f"User {message.author.name} has no open ticket to forward DM to."
             )
+            # respond with no open tickets
+            await message.channel.send(
+                "❌ You don't have any open tickets. Please create a ticket first."
+            )
             return
 
         # Forward the message to the ticket channel
@@ -177,7 +181,7 @@ async def on_message(message: discord.Message):
 
             await ticket_channel.send(embed=embed)
             logger.info(
-                f"Forwarded DM from {message.author.name} to ticket {ticket_channel.name}"
+                f"Forwarded DM from {message.author.global_name} to ticket {ticket_channel.name}"
             )
             # react to message
             await message.add_reaction("✅")

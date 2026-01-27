@@ -399,6 +399,12 @@ class CloseTicketButton(discord.ui.Button):
             f"Ticket is being closed by {interaction.user.mention}, generating transcript...",
             ephemeral=False,
         )
+        # notify ticket creator, continue if fails
+        try:
+            ticket_owner = await self.bot.fetch_user(ticket_owner_id)
+            await ticket_owner.send(f"Your ticket {channel.name} has been closed.")
+        except Exception as e:
+            logger.warning(f"⚠️ Could not notify ticket owner: {e}")
 
         logger.info(f"Ticket {channel.name} closed by {interaction.user.name}")
 
