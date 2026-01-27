@@ -162,7 +162,7 @@ async def on_message(message: discord.Message):
                 color=discord.Color.blue(),
             )
             embed.set_author(
-                name=f"{message.author.name}",
+                name=f"{message.author.global_name}",
                 icon_url=message.author.display_avatar.url,
             )
 

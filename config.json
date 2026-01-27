@@ -40,8 +40,8 @@
                         "senior_admin"
                     ],
                     "questions": [
-                        "Hi, please submit your steam id",
-                        "Please describe your issue in detail"
+                        "Hi, please submit your steam id:",
+                        "Please describe your issue in detail:"
                     ]
                 },
                 "player_report": {
@@ -58,8 +58,8 @@
                         "senior_admin"
                     ],
                     "questions": [
-                        "Please provide the steam id/s of the user/s you are reporting",
-                        "Why are they being reported"
+                        "Please provide the steam id/s of the user/s you are reporting:",
+                        "Why are they being reported:"
                     ]
                 },
                 "ban_appeals": {
@@ -73,8 +73,8 @@
                         "senior_admin"
                     ],
                     "questions": [
-                        "Hi, please submit your steam id",
-                        "Please describe the reason for your appeal"
+                        "Hi, please submit your steam id:",
+                        "Please describe the reason for your appeal:"
                     ]
                 }
             }
