@@ -402,7 +402,7 @@ class CloseTicketButton(discord.ui.Button):
         # notify ticket creator, continue if fails
         try:
             ticket_owner = await self.bot.fetch_user(ticket_owner_id)
-            await ticket_owner.send(f"Your ticket {channel.name} has been closed.")
+            await ticket_owner.send("Your ticket has been closed.")
         except Exception as e:
             logger.warning(f"⚠️ Could not notify ticket owner: {e}")
 

@@ -232,6 +232,7 @@ async def on_message(message: discord.Message):
                     else discord.Color(int(ticket_color.lstrip("#"), 16))
                 ),
             )
+
             embed.set_author(
                 name=f"{message.author.global_name}",
                 icon_url=message.author.display_avatar.url,
