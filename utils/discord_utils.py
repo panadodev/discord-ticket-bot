@@ -5,8 +5,11 @@ import logging
 
 import discord
 import DiscordTranscript
+from discord import Interaction, app_commands
 from discord.ext import commands
 from dotenv import load_dotenv
+
+from utils.sql_utils import DatabaseOperations
 
 load_dotenv()
 
@@ -286,6 +289,7 @@ class TicketButton(discord.ui.Button):
                 "log_channel": ticket_config.get("log_channel", None),
                 "ticket_channel_icon": ticket_icon,
                 "ticket_from_org": origin_org,
+                "ticket_from_guild": guild.id,
                 "viewable_by": ticket_config.get("viewable_by", []),
                 "created_at": created_at,
                 "created_by": user.id,
@@ -441,6 +445,25 @@ class CloseTicketButton(discord.ui.Button):
                             content=f"Transcript for closed ticket {channel.name} \n Duration: {round(ticket_duration, 2)} hours.",
                             file=transcript_file,
                         )
+                        logger.info("Logging ticket to databse")
+                        origin_org_guild = ticket_metadata["ticket_config"][
+                            "ticket_from_guild"
+                        ]
+                        ticket_type = ticket_metadata["ticket_config"]["button_name"]
+                        success_saving_in_database = (
+                            await DatabaseOperations.log_tickets(
+                                origin_org_guild=origin_org_guild,
+                                ticket_type=ticket_type,
+                                transcript=result,
+                                closed_by=interaction.user.id,
+                                opened_by=ticket_owner_id,
+                                created_by=ticket_metadata["ticket_config"][
+                                    "created_by"
+                                ],
+                            )
+                        )
+                        if success_saving_in_database is None:
+                            logger.error("Failed to log ticket to database.")
                         await asyncio.sleep(5)
                         await channel.delete()
                         logger.info(f"✅ Deleted ticket channel: {channel.name}")
@@ -517,7 +540,206 @@ async def find_user_ticket(
     return max(user_tickets, key=lambda c: c.id)
 
 
+class TicketTypeSelect(discord.ui.Select):
+    def __init__(self, config: dict, bot: commands.Bot):
+        self.config = config
+        self.bot = bot
+
+        # Build options from config
+        tickets_config = config["orgs"]["tickets"]
+        options = []
+        for ticket_type, ticket_info in tickets_config.items():
+            options.append(
+                discord.SelectOption(
+                    label=ticket_info["button_name"],
+                    value=ticket_type,
+                    description=f"Assign to {ticket_info['designated']} team",
+                    emoji=ticket_info.get("ticket_channel_icon", "🎫"),
+                )
+            )
+
+        super().__init__(
+            placeholder="Select ticket type to assign to...",
+            min_values=1,
+            max_values=1,
+            options=options,
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+        """Handle ticket type selection"""
+        channel = interaction.channel
+
+        if not isinstance(channel, discord.TextChannel):
+            await interaction.response.send_message(
+                "❌ This can only be used in a ticket channel.", ephemeral=True
+            )
+            return
+
+        # Get the selected ticket type
+        selected_type = self.values[0]
+        ticket_config = self.config["orgs"]["tickets"][selected_type]
+
+        # Update permissions for the channel
+        guild = interaction.guild
+        overwrites = {
+            guild.default_role: discord.PermissionOverwrite(read_messages=False),
+            guild.me: discord.PermissionOverwrite(
+                read_messages=True,
+                send_messages=True,
+                read_message_history=True,
+                manage_channels=True,
+                embed_links=True,
+            ),
+        }
+
+        # Get ticket owner from channel name
+        channel_name_parts = channel.name.split("-")
+        try:
+            ticket_owner_id = int(channel_name_parts[-1])
+            ticket_owner = await guild.fetch_member(ticket_owner_id)
+            if ticket_owner:
+                overwrites[ticket_owner] = discord.PermissionOverwrite(
+                    read_messages=True, send_messages=True, read_message_history=True
+                )
+        except (ValueError, IndexError, discord.NotFound):
+            logger.warning(
+                f"Could not find ticket owner from channel name: {channel.name}"
+            )
+
+        # Add permissions for viewable roles
+        orgs_config = self.config.get("orgs", {})
+        for role_key in ticket_config.get("viewable_by", []):
+            role_id = None
+            for org_name, org_data in orgs_config.items():
+                if org_name == "tickets":
+                    continue
+                if "roles" in org_data and role_key in org_data["roles"]:
+                    role_id = org_data["roles"][role_key]
+                    break
+
+            if role_id:
+                role = guild.get_role(role_id)
+                if role:
+                    overwrites[role] = discord.PermissionOverwrite(
+                        read_messages=True,
+                        send_messages=True,
+                        read_message_history=True,
+                    )
+
+        # Update channel permissions
+        try:
+            await channel.edit(overwrites=overwrites)
+        except Exception as e:
+            logger.error(f"Failed to update channel permissions: {e}")
+            await interaction.response.send_message(
+                "❌ Failed to update channel permissions.", ephemeral=True
+            )
+            return
+
+        # Update channel name with new emoji
+        ticket_icon = ticket_config["ticket_channel_icon"]
+        emoji_map = {
+            ":green_circle:": "🟢",
+            ":orange_circle:": "🟠",
+            ":blue_circle:": "🔵",
+            ":red_circle:": "🔴",
+            ":yellow_circle:": "🟡",
+            ":purple_circle:": "🟣",
+        }
+
+        if ticket_icon.startswith(":"):
+            emoji = emoji_map.get(ticket_icon, "🎫")
+        else:
+            emoji = ticket_icon
+
+        # Replace the emoji at the start of the channel name
+        old_name = channel.name
+        # Remove old emoji (first part before first dash)
+        name_parts = old_name.split("-", 1)
+        if len(name_parts) > 1:
+            new_name = f"{emoji}-{name_parts[1]}"
+            try:
+                await channel.edit(name=new_name)
+            except Exception as e:
+                logger.warning(f"Failed to update channel name: {e}")
+
+        # Update channel topic metadata
+        ticket_metadata = json.loads(channel.topic)
+        ticket_metadata["ticket_config"]["button_name"] = ticket_config["button_name"]
+        ticket_metadata["ticket_config"]["button_id"] = ticket_config["button_id"]
+        ticket_metadata["ticket_config"]["log_channel"] = ticket_config.get(
+            "log_channel"
+        )
+        ticket_metadata["ticket_config"]["ticket_channel_icon"] = ticket_icon
+        ticket_metadata["ticket_config"]["viewable_by"] = ticket_config.get(
+            "viewable_by", []
+        )
+        ticket_metadata["ticket_config"]["color"] = ticket_config.get(
+            "embed_color", "#ffffff"
+        )
+
+        try:
+            await channel.edit(topic=json.dumps(ticket_metadata))
+        except Exception as e:
+            logger.warning(f"Failed to update channel topic: {e}")
+
+        # Send confirmation message
+        embed = discord.Embed(
+            title="✅ Ticket Reassigned",
+            description=f"This ticket has been reassigned to **{ticket_config['button_name']}** team by {interaction.user.mention}",
+            color=discord.Color(
+                int(ticket_config.get("embed_color", "#ffffff").lstrip("#"), 16)
+            ),
+        )
+
+        await interaction.response.send_message(embed=embed)
+        logger.info(
+            f"Ticket {channel.name} reassigned to {selected_type} by {interaction.user.name}"
+        )
+
+
+class TicketTypeSelectView(discord.ui.View):
+    def __init__(self, config: dict, bot: commands.Bot):
+        super().__init__(timeout=60)
+        self.add_item(TicketTypeSelect(config, bot))
+
+
 class DiscordCommands(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.config = load_config()
+
+    main_guild_id = load_config()["MAIN_GUILD_ID"]
+
+    @app_commands.command(name="assign")
+    @app_commands.guilds(discord.Object(id=main_guild_id))
+    @app_commands.describe()
+    async def assign_ticket(self, interaction: Interaction) -> None:
+        """Reassign a ticket to a different team"""
+        channel = interaction.channel
+
+        # Check if this is a ticket channel
+        if not isinstance(channel, discord.TextChannel):
+            await interaction.response.send_message(
+                "❌ This command can only be used in a ticket channel.", ephemeral=True
+            )
+            return
+
+        # Verify it's a ticket channel by checking the topic
+        if (
+            not channel.topic
+            or not channel.topic.startswith("{")
+            or not channel.category.id == self.config.get("incoming_tickets_cat")
+        ):
+            await interaction.response.send_message(
+                "❌ This doesn't appear to be a valid ticket channel.", ephemeral=True
+            )
+            return
+
+        # Send the select menu
+        view = TicketTypeSelectView(self.config, self.bot)
+        await interaction.response.send_message(
+            "Select the ticket type to reassign this ticket to:",
+            view=view,
+            ephemeral=True,
+        )

@@ -17,9 +17,8 @@ class tickets(Model):
         table = "tickets"
 
     id = fields.IntField(pk=True)
-    type = fields.TextField()
 
-    guid = fields.IntField(max_length=20)
+    origin_org_guild = fields.IntField(max_length=20)
 
     ticket_type = fields.TextField(null=False)
     transcript = fields.TextField(null=True)
@@ -35,14 +34,26 @@ class tickets(Model):
 class DatabaseOperations:
 
     @staticmethod
-    async def log_ticket(data: dict):
-        await tickets.create(
-            type="pvp",
-            guid=data["guid"],
-            ticket_type=data["ticket_type"],
-            transcript=data.get("transcript", ""),
-            closed_by=data["closed_by"],
-            opened_by=data["opened_by"],
-            created_by=data["created_by"],
+    async def log_tickets(
+        origin_org_guild: int,
+        ticket_type: str,
+        transcript: str,
+        closed_by: int,
+        opened_by: int,
+        created_by: int,
+    ):
+        success = await tickets.create(
+            origin_org_guild=origin_org_guild,
+            ticket_type=ticket_type,
+            transcript=transcript,
+            closed_by=closed_by,
+            opened_by=opened_by,
+            created_by=created_by,
             created=int(time.time()),
         )
+        if success:
+            logger.info("Ticket logged successfully to the database.")
+        else:
+            logger.error("Failed to log ticket to the database.")
+
+        return success

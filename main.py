@@ -12,7 +12,11 @@ from discord.ext import commands
 from dotenv import load_dotenv
 from sentry_sdk.integrations.logging import EventHandler
 
-from utils.discord_utils import CloseTicketButton, TicketSupportEmbedManager
+from utils.discord_utils import (
+    CloseTicketButton,
+    DiscordCommands,
+    TicketSupportEmbedManager,
+)
 
 # from tortoise import Tortoise
 
@@ -54,6 +58,10 @@ async def on_ready():
     try:
         # Setup persistent views and ticket embed manager
         ticket_embed_manager = TicketSupportEmbedManager(bot)
+
+        # Add the DiscordCommands cog
+        await bot.add_cog(DiscordCommands(bot))
+        logger.info("Added DiscordCommands cog")
 
         if not ticket_embed_manager.config:
             logger.error("Failed to load config")
@@ -206,13 +214,20 @@ async def on_message(message: discord.Message):
             logger.debug(f"Channel {channel_name} is not a valid ticket channel.")
             return
 
-        # Check if message starts with !r prefix
-        if not message.content.startswith("!r"):
-            logger.debug("Message does not start with !r prefix; not forwarding.")
-            return
+        # Check if message starts with !r or !rm prefix
+        is_anonymous = message.content.startswith(
+            "!r"
+        ) and not message.content.startswith("!rm")
+        message_content = (
+            message.content[3:].strip()
+            if not is_anonymous
+            else message.content[2:].strip()
+        )
 
-        # Remove the prefix from the message
-        message_content = message.content[2:].strip()
+        # Ignore messages that do not start with !r or !rm
+        if not (message.content.startswith("!r") or message.content.startswith("!rm")):
+            logger.debug("Message does not start with !r or !rm; ignoring.")
+            return
 
         # Forward to ticket owner's DM
         try:
@@ -233,10 +248,13 @@ async def on_message(message: discord.Message):
                 ),
             )
 
-            embed.set_author(
-                name=f"{message.author.global_name}",
-                icon_url=message.author.display_avatar.url,
-            )
+            if is_anonymous:
+                embed.set_author(name="Staff Member")
+            else:
+                embed.set_author(
+                    name=f"{message.author.global_name}",
+                    icon_url=message.author.display_avatar.url,
+                )
 
             # Handle attachments
             if message.attachments:
@@ -251,6 +269,12 @@ async def on_message(message: discord.Message):
 
             # delete message and replace with the received embed
             await message.delete()
+
+            if is_anonymous:
+                embed.set_author(
+                    name=f"{message.author.global_name} (hidden)",
+                    icon_url=message.author.display_avatar.url,
+                )
             await message.channel.send(embed=embed)
 
             logger.info(
