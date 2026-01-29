@@ -18,14 +18,14 @@ class tickets(Model):
 
     id = fields.IntField(pk=True)
 
-    origin_org_guild = fields.IntField(max_length=20)
+    origin_org_guild = fields.BigIntField()
 
     ticket_type = fields.TextField(null=False)
     transcript = fields.TextField(null=True)
 
-    closed_by = fields.IntField(max_length=20, null=False)
-    opened_by = fields.IntField(max_length=20, null=False)
-    created_by = fields.IntField(max_length=20, null=False)
+    closed_by = fields.BigIntField(null=False)
+    opened_by = fields.BigIntField(null=False)
+    created_by = fields.BigIntField(null=False)
 
     created = fields.IntField(null=False)
 
