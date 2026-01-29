@@ -475,6 +475,13 @@ class CloseTicketButton(discord.ui.Button):
                             content=f"<t:{now}:R> {channel.name} \n Duration: {round(ticket_duration, 2)} hours.{pinned_content}",
                             file=transcript_file,
                         )
+
+                        # Send pinned embeds to log channel
+                        if pinned_messages:
+                            for pin_msg in pinned_messages:
+                                if pin_msg.embeds:
+                                    for embed in pin_msg.embeds:
+                                        await log_ch.send(embed=embed)
                         logger.info("Logging ticket to database")
                         origin_org_guild = ticket_metadata["ticket_config"].get(
                             "ticket_from_guild"
