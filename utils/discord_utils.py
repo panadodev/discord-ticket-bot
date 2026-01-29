@@ -48,12 +48,22 @@ class TicketButton(discord.ui.Button):
     async def callback(self, interaction: discord.Interaction):
         """Handle ticket button click"""
         user = interaction.user
-        guild = interaction.guild
 
+        # Always use the main guild for ticket creation
+        main_guild_id = self.config.get("MAIN_GUILD_ID")
+        if not main_guild_id:
+            await interaction.response.send_message(
+                "❌ Main guild ID not configured.", ephemeral=True
+            )
+            logger.error("Main guild ID not configured in config.json")
+            return
+
+        guild = self.bot.get_guild(main_guild_id)
         if not guild:
             await interaction.response.send_message(
-                "❌ This command can only be used in a server.", ephemeral=True
+                "❌ Could not access the main guild.", ephemeral=True
             )
+            logger.error(f"Bot cannot access guild with ID {main_guild_id}")
             return
 
         # Check if user is already in a ticket creation process
@@ -200,9 +210,10 @@ class TicketButton(discord.ui.Button):
         """Create the ticket channel with proper permissions and summary"""
         # Get categories
         incoming_cat_id = self.config.get("incoming_tickets_cat")
-        incoming_category = (
-            guild.get_channel(incoming_cat_id) if incoming_cat_id else None
-        )
+        if not incoming_cat_id:
+            logger.error("Incoming tickets category ID not configured.")
+            raise ValueError("Incoming tickets category ID not configured.")
+        incoming_category = guild.get_channel(incoming_cat_id)
 
         # Create channel name: tickettype-username-org-dcid
         ticket_icon = ticket_config["ticket_channel_icon"]
