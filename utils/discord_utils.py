@@ -618,8 +618,22 @@ class TicketTypeSelect(discord.ui.Select):
             except json.JSONDecodeError:
                 logger.warning(f"Failed to parse channel topic for {channel.name}")
 
-        # Update permissions for the channel
-        guild = interaction.guild
+        # Always use the main guild for role lookups
+        main_guild_id = self.config.get("MAIN_GUILD_ID")
+        if not main_guild_id:
+            await interaction.followup.send(
+                "❌ Main guild ID not configured.", ephemeral=True
+            )
+            logger.error("Main guild ID not configured in config.json")
+            return
+
+        guild = self.bot.get_guild(main_guild_id)
+        if not guild:
+            await interaction.followup.send(
+                "❌ Could not access the main guild.", ephemeral=True
+            )
+            logger.error(f"Bot cannot access guild with ID {main_guild_id}")
+            return
         overwrites = {
             guild.default_role: discord.PermissionOverwrite(read_messages=False),
             guild.me: discord.PermissionOverwrite(
