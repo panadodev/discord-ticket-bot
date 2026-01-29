@@ -818,6 +818,14 @@ class DiscordCommands(commands.Cog):
         await interaction.response.defer(ephemeral=True)
         """Reassign a ticket to a different team"""
 
+        # Check if config loaded successfully
+        if not self.config:
+            await interaction.followup.send(
+                "❌ Main guild ID not configured.", ephemeral=True
+            )
+            logger.error("Config not loaded in assign_ticket")
+            return
+
         # Ensure command is used in the main guild only
         if not interaction.guild or interaction.guild.id != self.config.get(
             "main_guild_id"
