@@ -244,7 +244,7 @@ class TicketButton(discord.ui.Button):
         # Create sanitized channel name using ticket type
         username_clean = user.name.lower().replace(" ", "-")
         guild_clean = guild.name.lower().replace(" ", "-")
-        channel_name = f"{self.ticket_type}-{username_clean}-{guild_clean}-{user.id}"
+        channel_name = f"{username_clean}-{guild_clean}-{user.id}"
         # Remove any special characters that Discord doesn't allow
         channel_name = "".join(c for c in channel_name if c.isalnum() or c in "-_")
 
