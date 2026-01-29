@@ -83,7 +83,7 @@
                     "log_channel": 1033378521464864060,
                     "button_name": "Mute Appeal",
                     "button_id": "mute_appeal",
-                    "designated": "admin",
+                    "designated": "support",
                     "ticket_channel_icon": "🟠",
                     "embed_color": "#ff8000",
                     "has_perms": [
