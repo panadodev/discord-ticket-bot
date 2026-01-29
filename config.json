@@ -1,32 +1,31 @@
 {
     "config": {
-        "MAIN_GUILD_ID": 1465076029314830571,
-        "MANAGEMENT_ROLE": 1465357446930501653,
+        "MAIN_GUILD_ID": 868656215834624020,
+        "MANAGEMENT_ROLE": 868661502108925993,
         "ticket_support_channels": [
-            1465341246771036345,
-            1465389884230336738
+            1465341246771036345
         ],
-        "incoming_tickets_cat": 1465076153483264142,
+        "incoming_tickets_cat": 1466379561590849752,
         "orgs": {
             "willjum": {
                 "roles": {
-                    "trial_admin": 1465341737886289972,
-                    "trainee_admin": 1465342022683590726,
-                    "admin": 1465342080401412228,
-                    "senior_admin": 1465342125737639967,
-                    "support": 1465342181110714379
+                    "trial_admin": 1449428155939950704,
+                    "trainee_admin": 1256345226008592425,
+                    "admin": 868671890493964328,
+                    "senior_admin": 868661503149080636,
+                    "support": 868672414693875744
                 },
-                "guild": 1465076029314830571
+                "guild": 123
             },
             "sanc": {
                 "roles": {
-                    "support": 1465342275755446465
+                    "support": 1466380422102384673
                 },
                 "guild": 123
             },
             "tickets": {
                 "support": {
-                    "log_channel": 1465434489168728126,
+                    "log_channel": 1222026130727501894,
                     "button_name": "Support Ticket",
                     "button_id": "support_ticket",
                     "designated": "support",
@@ -45,7 +44,7 @@
                     ]
                 },
                 "player_report": {
-                    "log_channel": 1465434398131228836,
+                    "log_channel": 1033378494702428271,
                     "button_name": "Player Report",
                     "button_id": "player_report",
                     "designated": "admin",
@@ -63,7 +62,7 @@
                     ]
                 },
                 "ban_appeals": {
-                    "log_channel": 1465341298830479485,
+                    "log_channel": 1033378507163713668,
                     "button_name": "Ban Appeal",
                     "button_id": "ban_appeal",
                     "designated": "senior_admin",
