@@ -359,7 +359,11 @@ class TicketButton(discord.ui.Button):
                 embed=embed,
                 view=view,
             )
-            logger.info(f"✅ Sent ticket summary embed to {ticket_channel.name}")
+            # Pin the embed message
+            await message.pin()
+            logger.info(
+                f"✅ Sent and pinned ticket summary embed to {ticket_channel.name}"
+            )
         except Exception as e:
             logger.error(f"❌ Failed to send embed to ticket channel: {e}")
 
@@ -422,12 +426,6 @@ class CloseTicketButton(discord.ui.Button):
             f"Ticket is being closed by {interaction.user.mention}, generating transcript...",
             ephemeral=False,
         )
-        # notify ticket creator, continue if fails
-        try:
-            ticket_owner = await self.bot.fetch_user(ticket_owner_id)
-            await ticket_owner.send("Your ticket has been closed.")
-        except Exception as e:
-            logger.warning(f"⚠️ Could not notify ticket owner: {e}")
 
         logger.info(f"Ticket {channel.name} closed by {interaction.user.name}")
 
@@ -460,8 +458,21 @@ class CloseTicketButton(discord.ui.Button):
                         ticket_duration = (
                             (now - ticket_created_at) / 3600 if ticket_created_at else 0
                         )
+
+                        # Get all pinned messages from the ticket channel
+                        pinned_messages = await channel.pins()
+                        pinned_content = ""
+                        if pinned_messages:
+                            pinned_content = "\n\n**Pinned Messages:**\n"
+                            for pin_msg in pinned_messages:
+                                pinned_content += (
+                                    f"- {pin_msg.author.name}: {pin_msg.content[:100]}...\n"
+                                    if len(pin_msg.content) > 100
+                                    else f"- {pin_msg.author.name}: {pin_msg.content}\n"
+                                )
+
                         await log_ch.send(
-                            content=f"<t:{now}:R> {channel.name} \n Duration: {round(ticket_duration, 2)} hours.",
+                            content=f"<t:{now}:R> {channel.name} \n Duration: {round(ticket_duration, 2)} hours.{pinned_content}",
                             file=transcript_file,
                         )
                         logger.info("Logging ticket to database")
@@ -495,6 +506,15 @@ class CloseTicketButton(discord.ui.Button):
                             )
                         await channel.delete()
                         logger.info(f"✅ Deleted ticket channel: {channel.name}")
+
+                        # notify ticket creator, continue if fails
+                        try:
+                            ticket_owner = await self.bot.fetch_user(ticket_owner_id)
+                            await ticket_owner.send(
+                                f"Your {ticket_type} ticket has been closed."
+                            )
+                        except Exception as e:
+                            logger.warning(f"⚠️ Could not notify ticket owner: {e}")
 
         except Exception as e:
             logger.error(f"❌ Failed to delete ticket channel {channel.name}: {e}")
