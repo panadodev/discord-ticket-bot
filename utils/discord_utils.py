@@ -449,7 +449,7 @@ class CloseTicketButton(discord.ui.Button):
                             (now - ticket_created_at) / 3600 if ticket_created_at else 0
                         )
                         await log_ch.send(
-                            content=f"Transcript for closed ticket {channel.name} \n Duration: {round(ticket_duration, 2)} hours.",
+                            content=f"<t:{now}:R> {channel.name} \n Duration: {round(ticket_duration, 2)} hours.",
                             file=transcript_file,
                         )
                         logger.info("Logging ticket to database")
