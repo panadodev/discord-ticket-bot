@@ -1,6 +1,6 @@
 {
     "config": {
-        "MAIN_GUILD_ID": 868656215834624020,
+        "main_guild_id": 868656215834624020,
         "MANAGEMENT_ROLE": 868661502108925993,
         "ticket_support_channels": [
             1465341246771036345
