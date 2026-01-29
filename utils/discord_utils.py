@@ -340,12 +340,13 @@ class TicketButton(discord.ui.Button):
                 int(ticket_config.get("embed_color", "#ffffff").lstrip("#"), 16)
             ),
         )
-        embed.footer.text = f"{guild.name}-{user.id}-{user.name}"
+        embed.set_thumbnail(url=user.display_avatar.url)
+        embed.set_footer(text=f"{self.ticket_type}-{org_name} (User !r to reply)")
 
         # Add questions and answers
         questions = ticket_config.get("questions", [])
         for i, (question, answer) in enumerate(zip(questions, answers), 1):
-            embed.add_field(name=f"{question}:", value=answer, inline=False)
+            embed.add_field(name=f"{question}", value=answer, inline=False)
 
         # Create close button view
         close_button = CloseTicketButton(self.bot)
