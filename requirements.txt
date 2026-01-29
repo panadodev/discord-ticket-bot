@@ -7,3 +7,4 @@ discord
 Brotli
 sentry_sdk
 DiscordTranscript
+typing_extensions

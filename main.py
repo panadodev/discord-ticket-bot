@@ -11,15 +11,13 @@ import sentry_sdk
 from discord.ext import commands
 from dotenv import load_dotenv
 from sentry_sdk.integrations.logging import EventHandler
+from tortoise import Tortoise
 
 from utils.discord_utils import (
     CloseTicketButton,
     DiscordCommands,
     TicketSupportEmbedManager,
 )
-
-# from tortoise import Tortoise
-
 
 # Load environment variables
 load_dotenv()
@@ -308,14 +306,14 @@ def start_discord_bot():
     bot.run(DISCORD_TOKEN)
 
 
-"""async def init_tortoise():
+async def init_tortoise():
     uri = os.getenv("PG_URI")
     await Tortoise.init(
         db_url=uri,
         modules={"models": ["utils.sql_utils"]},
     )
     await Tortoise.generate_schemas()
-    logger.info("Tortoise ORM initialized and schemas generated.")"""
+    logger.info("Tortoise ORM initialized and schemas generated.")
 
 
 if __name__ == "__main__":
