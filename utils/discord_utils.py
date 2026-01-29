@@ -781,10 +781,17 @@ class DiscordCommands(commands.Cog):
         self.bot = bot
         self.config = load_config()
 
-    main_guild_id = load_config()["main_guild_id"]
+        # Get main_guild_id for command registration
+        if self.config:
+            self.main_guild_id = self.config.get("main_guild_id")
+        else:
+            self.main_guild_id = None
+            logger.error("Failed to load config in DiscordCommands")
 
     @app_commands.command(name="assign")
-    @app_commands.guilds(discord.Object(id=main_guild_id))
+    @app_commands.guilds(
+        discord.Object(id=868656215834624020)
+    )  # Hardcoded for registration
     @app_commands.describe()
     async def assign_ticket(self, interaction: Interaction) -> None:
         await interaction.response.defer(ephemeral=True)
