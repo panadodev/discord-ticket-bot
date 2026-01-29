@@ -71,13 +71,16 @@ async def on_ready():
             logger.error("Failed to load config")
             return
 
-        archipel_guild_id = ticket_embed_manager.config.get("main_guild_id")
-        if not archipel_guild_id:
+        # main guild id is in {"config": {"main_guild_id": ...}}
+        main_guild_id = ticket_embed_manager.config.get("config", {}).get(
+            "main_guild_id"
+        )
+        if not main_guild_id:
             logger.error("main_guild_id is not set in config.json")
             return
 
-        synced = await bot.tree.sync(guild=discord.Object(id=archipel_guild_id))
-        logger.info(f"✅ Synced {len(synced)} command(s) to guild {archipel_guild_id}")
+        synced = await bot.tree.sync(guild=discord.Object(id=main_guild_id))
+        logger.info(f"✅ Synced {len(synced)} command(s) to guild {main_guild_id}")
 
         # Debug: Print command names
         for cmd in synced:
@@ -148,7 +151,7 @@ async def on_message(message: discord.Message):
             return
 
         # Find the user's guild (assuming main guild from config)
-        main_guild_id = config.get("main_guild_id")
+        main_guild_id = config.get("config").get("main_guild_id")
         if not main_guild_id:
             logger.error("main_guild_id not set in config")
             return
