@@ -1,7 +1,6 @@
 {
     "config": {
         "main_guild_id": 868656215834624020,
-        "MANAGEMENT_ROLE": 868661502108925993,
         "ticket_support_channels": [
             1465341246771036345,
             1466405884153434182,
@@ -15,13 +14,15 @@
                     "trainee_admin": 1256345226008592425,
                     "admin": 868671890493964328,
                     "senior_admin": 868661503149080636,
-                    "support": 868672414693875744
+                    "support": 868672414693875744,
+                    "management": 868661502108925993
                 },
                 "guild": 123
             },
             "sanc": {
                 "roles": {
-                    "support": 1466380422102384673
+                    "support": 1466380422102384673,
+                    "management": 868661502108925993
                 },
                 "guild": 123
             },
@@ -31,8 +32,8 @@
                     "button_name": "Support Ticket",
                     "button_id": "support_ticket",
                     "designated": "support",
-                    "ticket_channel_icon": "🟢",
-                    "embed_color": "#ffffff",
+                    "ticket_channel_icon": "🟣",
+                    "embed_color": "#8000ff",
                     "has_perms": [
                         "support",
                         "trial_admin",
@@ -50,8 +51,8 @@
                     "button_name": "Player Report",
                     "button_id": "player_report",
                     "designated": "admin",
-                    "ticket_channel_icon": "🟠",
-                    "embed_color": "#ff8000",
+                    "ticket_channel_icon": "🟢",
+                    "embed_color": "#00ff00",
                     "has_perms": [
                         "trial_admin",
                         "trainee_admin",
@@ -68,15 +69,32 @@
                     "button_name": "Ban Appeal",
                     "button_id": "ban_appeal",
                     "designated": "senior_admin",
-                    "ticket_channel_icon": "🔵",
-                    "embed_color": "#0000ff",
+                    "ticket_channel_icon": "🔴",
+                    "embed_color": "#ff0000",
                     "has_perms": [
                         "senior_admin"
                     ],
                     "questions": [
                         "Hi, please submit your own steam id:",
                         "Please describe the reason for your appeal:"
-                    ]
+                    ],
+                    "staff_application": {
+                        "log_channel": 1033378546015543296,
+                        "button_name": "Staff Application",
+                        "button_id": "staff_application",
+                        "designated": "management",
+                        "ticket_channel_icon": "🔵",
+                        "embed_color": "#0000ff",
+                        "has_perms": [
+                            "management"
+                        ],
+                        "questions": [
+                            "Hi, please submit your steam id:",
+                            "Which position and why do you want to join our staff team?",
+                            "What prior experience do you have?",
+                            "How many hours can you dedicate weekly?"
+                        ]
+                    }
                 }
             }
         }
