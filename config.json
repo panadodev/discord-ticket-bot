@@ -79,6 +79,23 @@
                         "Please describe the reason for your appeal:"
                     ]
                 },
+                "mute_appeals": {
+                    "log_channel": 1033378521464864060,
+                    "button_name": "Mute Appeal",
+                    "button_id": "mute_appeal",
+                    "designated": "admin",
+                    "ticket_channel_icon": "🟠",
+                    "embed_color": "#ff8000",
+                    "has_perms": [
+                        "admin",
+                        "senior_admin",
+                        "support"
+                    ],
+                    "questions": [
+                        "Hi, please submit your own steam id:",
+                        "Please describe the reason for your appeal:"
+                    ]
+                },
                 "staff_application": {
                     "log_channel": 1033378546015543296,
                     "button_name": "Staff Application",
@@ -94,6 +111,21 @@
                         "Which position and why do you want to join our staff team?",
                         "What prior experience do you have?",
                         "How many hours can you dedicate weekly?"
+                    ]
+                },
+                "vip_related": {
+                    "log_channel": 1466406010636149763,
+                    "button_name": "VIP Related",
+                    "button_id": "vip_related",
+                    "designated": "management",
+                    "ticket_channel_icon": "⚪",
+                    "embed_color": "#ffff00",
+                    "has_perms": [
+                        "management"
+                    ],
+                    "questions": [
+                        "Hi, please submit your steam id:",
+                        "Please describe your issue in detail:"
                     ]
                 }
             }
