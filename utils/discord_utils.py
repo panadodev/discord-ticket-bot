@@ -50,7 +50,7 @@ class TicketButton(discord.ui.Button):
         user = interaction.user
 
         # Always use the main guild for ticket creation
-        main_guild_id = self.config.get("config", {}).get("main_guild_id")
+        main_guild_id = self.config.get("main_guild_id")
         if not main_guild_id:
             await interaction.response.send_message(
                 "❌ Main guild ID not configured.", ephemeral=True
@@ -619,7 +619,7 @@ class TicketTypeSelect(discord.ui.Select):
                 logger.warning(f"Failed to parse channel topic for {channel.name}")
 
         # Always use the main guild for role lookups
-        main_guild_id = self.config.get("config", {}).get("main_guild_id")
+        main_guild_id = self.config.get("main_guild_id")
         if not main_guild_id:
             await interaction.followup.send(
                 "❌ Main guild ID not configured.", ephemeral=True
@@ -792,8 +792,8 @@ class DiscordCommands(commands.Cog):
 
         # Ensure command is used in the main guild only
         if not interaction.guild or interaction.guild.id != self.config.get(
-            "config", {}
-        ).get("main_guild_id"):
+            "main_guild_id"
+        ):
             await interaction.followup.send(
                 "❌ This command can only be used in the main server.", ephemeral=True
             )

@@ -71,10 +71,8 @@ async def on_ready():
             logger.error("Failed to load config")
             return
 
-        # main guild id is in {"config": {"main_guild_id": ...}}
-        main_guild_id = ticket_embed_manager.config.get("config", {}).get(
-            "main_guild_id"
-        )
+        # Get main guild id from config
+        main_guild_id = ticket_embed_manager.config.get("main_guild_id")
         if not main_guild_id:
             logger.error("main_guild_id is not set in config.json")
             return
@@ -151,7 +149,7 @@ async def on_message(message: discord.Message):
             return
 
         # Find the user's guild (assuming main guild from config)
-        main_guild_id = config.get("config").get("main_guild_id")
+        main_guild_id = config.get("main_guild_id")
         if not main_guild_id:
             logger.error("main_guild_id not set in config")
             return
