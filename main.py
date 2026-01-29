@@ -11,11 +11,13 @@ import sentry_sdk
 from discord.ext import commands
 from dotenv import load_dotenv
 from sentry_sdk.integrations.logging import EventHandler
+from tortoise import Tortoise
 
-from utils.discord_utils import CloseTicketButton, TicketSupportEmbedManager
-
-# from tortoise import Tortoise
-
+from utils.discord_utils import (
+    CloseTicketButton,
+    DiscordCommands,
+    TicketSupportEmbedManager,
+)
 
 # Load environment variables
 load_dotenv()
@@ -52,20 +54,31 @@ async def on_ready():
     await bot.wait_until_ready()
 
     try:
+        # Initialize Tortoise ORM for database access
+        try:
+            await init_tortoise()
+        except Exception as e:
+            logger.warning(f"⚠️ Failed to initialize database: {e}")
+
         # Setup persistent views and ticket embed manager
         ticket_embed_manager = TicketSupportEmbedManager(bot)
+
+        # Add the DiscordCommands cog
+        await bot.add_cog(DiscordCommands(bot))
+        logger.info("Added DiscordCommands cog")
 
         if not ticket_embed_manager.config:
             logger.error("Failed to load config")
             return
 
-        archipel_guild_id = ticket_embed_manager.config.get("MAIN_GUILD_ID")
-        if not archipel_guild_id:
-            logger.error("MAIN_GUILD_ID is not set in config.json")
+        # Get main guild id from config
+        main_guild_id = ticket_embed_manager.config.get("main_guild_id")
+        if not main_guild_id:
+            logger.error("main_guild_id is not set in config.json")
             return
 
-        synced = await bot.tree.sync(guild=discord.Object(id=archipel_guild_id))
-        logger.info(f"✅ Synced {len(synced)} command(s) to guild {archipel_guild_id}")
+        synced = await bot.tree.sync(guild=discord.Object(id=main_guild_id))
+        logger.info(f"✅ Synced {len(synced)} command(s) to guild {main_guild_id}")
 
         # Debug: Print command names
         for cmd in synced:
@@ -136,9 +149,9 @@ async def on_message(message: discord.Message):
             return
 
         # Find the user's guild (assuming main guild from config)
-        main_guild_id = config.get("MAIN_GUILD_ID")
+        main_guild_id = config.get("main_guild_id")
         if not main_guild_id:
-            logger.error("MAIN_GUILD_ID not set in config")
+            logger.error("main_guild_id not set in config")
             return
 
         guild = bot.get_guild(main_guild_id)
@@ -206,13 +219,20 @@ async def on_message(message: discord.Message):
             logger.debug(f"Channel {channel_name} is not a valid ticket channel.")
             return
 
-        # Check if message starts with !r prefix
-        if not message.content.startswith("!r"):
-            logger.debug("Message does not start with !r prefix; not forwarding.")
-            return
+        # Check if message starts with !r or !rm prefix
+        is_anonymous = message.content.startswith(
+            "!r"
+        ) and not message.content.startswith("!rm")
+        message_content = (
+            message.content[3:].strip()
+            if not is_anonymous
+            else message.content[2:].strip()
+        )
 
-        # Remove the prefix from the message
-        message_content = message.content[2:].strip()
+        # Ignore messages that do not start with !r or !rm
+        if not (message.content.startswith("!r") or message.content.startswith("!rm")):
+            logger.debug("Message does not start with !r or !rm; ignoring.")
+            return
 
         # Forward to ticket owner's DM
         try:
@@ -232,10 +252,14 @@ async def on_message(message: discord.Message):
                     else discord.Color(int(ticket_color.lstrip("#"), 16))
                 ),
             )
-            embed.set_author(
-                name=f"{message.author.global_name}",
-                icon_url=message.author.display_avatar.url,
-            )
+
+            if is_anonymous:
+                embed.set_author(name="Staff Member")
+            else:
+                embed.set_author(
+                    name=f"{message.author.global_name}",
+                    icon_url=message.author.display_avatar.url,
+                )
 
             # Handle attachments
             if message.attachments:
@@ -250,6 +274,12 @@ async def on_message(message: discord.Message):
 
             # delete message and replace with the received embed
             await message.delete()
+
+            if is_anonymous:
+                embed.set_author(
+                    name=f"{message.author.global_name} (hidden)",
+                    icon_url=message.author.display_avatar.url,
+                )
             await message.channel.send(embed=embed)
 
             logger.info(
@@ -283,14 +313,14 @@ def start_discord_bot():
     bot.run(DISCORD_TOKEN)
 
 
-"""async def init_tortoise():
+async def init_tortoise():
     uri = os.getenv("PG_URI")
     await Tortoise.init(
         db_url=uri,
         modules={"models": ["utils.sql_utils"]},
     )
     await Tortoise.generate_schemas()
-    logger.info("Tortoise ORM initialized and schemas generated.")"""
+    logger.info("Tortoise ORM initialized and schemas generated.")
 
 
 if __name__ == "__main__":
