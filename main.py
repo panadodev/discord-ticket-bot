@@ -54,6 +54,12 @@ async def on_ready():
     await bot.wait_until_ready()
 
     try:
+        # Initialize Tortoise ORM for database access
+        try:
+            await init_tortoise()
+        except Exception as e:
+            logger.warning(f"⚠️ Failed to initialize database: {e}")
+
         # Setup persistent views and ticket embed manager
         ticket_embed_manager = TicketSupportEmbedManager(bot)
 
