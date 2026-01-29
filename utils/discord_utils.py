@@ -111,8 +111,13 @@ class TicketButton(discord.ui.Button):
                 # User cancelled or timeout
                 return
 
+            source_org = interaction.guild.name.lower().replace(" ", "-")
+            source_org_id = interaction.guild.id
+
             # Create the ticket channel
-            await self.create_ticket_channel(guild, user, ticket_config, answers)
+            await self.create_ticket_channel(
+                guild, user, ticket_config, answers, source_org, source_org_id
+            )
 
         except discord.Forbidden:
             await interaction.followup.send(
@@ -206,6 +211,8 @@ class TicketButton(discord.ui.Button):
         user: discord.User,
         ticket_config: dict,
         answers: list[str],
+        source_org: str,
+        source_org_id: int,
     ) -> None:
         """Create the ticket channel with proper permissions and summary"""
         # Get categories
@@ -297,7 +304,6 @@ class TicketButton(discord.ui.Button):
 
         button_name = ticket_config.get("button_name", "Unknown Ticket")
         button_id = ticket_config.get("button_id", "unknown_ticket")
-        origin_org = guild_clean
         created_at = int(discord.utils.utcnow().timestamp())
         ticket_metadata = {
             "ticket_config": {
@@ -306,7 +312,7 @@ class TicketButton(discord.ui.Button):
                 "log_channel": ticket_config.get("log_channel", None),
                 "ticket_type": self.ticket_type,
                 "ticket_channel_icon": ticket_icon,
-                "ticket_from_org": origin_org,
+                "ticket_from_org": source_org_id,
                 "ticket_from_guild": guild.id,
                 "has_perms": ticket_config.get("has_perms", []),
                 "created_at": created_at,
@@ -341,7 +347,7 @@ class TicketButton(discord.ui.Button):
             ),
         )
         embed.set_thumbnail(url=user.display_avatar.url)
-        embed.set_footer(text=f"{self.ticket_type}-{origin_org} (User !r to reply)")
+        embed.set_footer(text=f"{self.ticket_type}-{source_org} (User !r to reply)")
 
         # Add questions and answers
         questions = ticket_config.get("questions", [])

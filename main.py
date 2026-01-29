@@ -1,6 +1,7 @@
 # @author: Panado (yesdotcom), 2026
 
 import asyncio
+import io
 import json
 import logging
 import os
@@ -183,16 +184,95 @@ async def on_message(message: discord.Message):
                 icon_url=message.author.display_avatar.url,
             )
 
-            # Handle attachments
+            # Handle attachments with security checks
+            files = []
+            MAX_FILE_SIZE = 25 * 1024 * 1024  # 25 MB limit
+            ALLOWED_EXTENSIONS = {
+                # Images
+                'png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp',
+                # Documents
+                'pdf', 'doc', 'docx', 'xls', 'xlsx', 'txt', 'csv',
+                # Archives
+                'zip', 'rar', '7z', 'tar', 'gz',
+                # Media
+                'mp3', 'mp4', 'wav', 'mov', 'avi'
+            }
+            
             if message.attachments:
                 for attachment in message.attachments:
+                    # Validate file size
+                    if attachment.size > MAX_FILE_SIZE:
+                        embed.add_field(
+                            name="Attachment (Too Large)",
+                            value=f"[{attachment.filename}]({attachment.url}) - File exceeds 25 MB limit",
+                            inline=False,
+                        )
+                        logger.warning(f"File {attachment.filename} exceeds size limit: {attachment.size} bytes")
+                        continue
+                    
+                    # Validate file extension
+                    file_ext = attachment.filename.rsplit('.', 1)[-1].lower() if '.' in attachment.filename else ''
+                    if file_ext not in ALLOWED_EXTENSIONS:
+                        embed.add_field(
+                            name="Attachment (Blocked)",
+                            value=f"[{attachment.filename}]({attachment.url}) - File type not allowed",
+                            inline=False,
+                        )
+                        logger.warning(f"File {attachment.filename} has disallowed extension: {file_ext}")
+                        continue
+                    
+                # Images
+                'png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp',
+                # Documents
+                'pdf', 'doc', 'docx', 'xls', 'xlsx', 'txt', 'csv',
+                # Archives
+                'zip', 'rar', '7z', 'tar', 'gz',
+                # Media
+                'mp3', 'mp4', 'wav', 'mov', 'avi'
+            }
+            
+            if message.attachments:
+                for attachment in message.attachments:
+                    # Validate file size
+                    if attachment.size > MAX_FILE_SIZE:
+                        embed.add_field(
+                            name="Attachment (Too Large)",
+                            value=f"[{attachment.filename}]({attachment.url}) - File exceeds 25 MB limit",
+                            inline=False,
+                        )
+                        logger.warning(f"File {attachment.filename} exceeds size limit: {attachment.size} bytes")
+                        continue
+                    
+                    # Validate file extension
+                    file_ext = attachment.filename.rsplit('.', 1)[-1].lower() if '.' in attachment.filename else ''
+                    if file_ext not in ALLOWED_EXTENSIONS:
+                        embed.add_field(
+                            name="Attachment (Blocked)",
+                            value=f"[{attachment.filename}]({attachment.url}) - File type not allowed",
+                            inline=False,
+                        )
+                        logger.warning(f"File {attachment.filename} has disallowed extension: {file_ext}")
+                        continue
+                    
                     embed.add_field(
                         name="Attachment",
                         value=f"[{attachment.filename}]({attachment.url})",
                         inline=False,
                     )
+                    # Download and prepare file for forwarding
+                    try:
+                        file_data = await attachment.read()
+                        files.append(
+                            discord.File(
+                                io.BytesIO(file_data), filename=attachment.filename
+                            )
+                        )
+                    except Exception as e:
+                        logger.warning(
+                            f"Failed to download attachment {attachment.filename}: {e}"
+                        )
 
-            await ticket_channel.send(embed=embed)
+            await ticket_channel.send(embed=embed, files=files if files else None)
             logger.info(
                 f"Forwarded DM from {message.author.global_name} to ticket {ticket_channel.name}"
             )
@@ -262,6 +342,7 @@ async def on_message(message: discord.Message):
                 )
 
             # Handle attachments
+            files = []
             if message.attachments:
                 for attachment in message.attachments:
                     embed.add_field(
@@ -269,8 +350,27 @@ async def on_message(message: discord.Message):
                         value=f"[{attachment.filename}]({attachment.url})",
                         inline=False,
                     )
+                    # Download and prepare file for forwarding
+                    try:
+                        file_data = await attachment.read()
+                        files.append(
+                            discord.File(
+                                io.BytesIO(file_data), filename=attachment.filename
+                            )
+                        )
+                    except Exception as e:
+                        logger.warning(
+                            f"Failed to download attachment {attachment.filename}: {e}"
+                        )
 
-            await ticket_owner.send(embed=embed)
+            # Collect embeds to send (message embed + any embeds from the original message)
+            embeds_to_send = [embed]
+            if message.embeds:
+                embeds_to_send.extend(message.embeds)
+
+            await ticket_owner.send(
+                embeds=embeds_to_send, files=files if files else None
+            )
 
             # delete message and replace with the received embed
             await message.delete()
