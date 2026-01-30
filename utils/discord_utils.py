@@ -436,8 +436,8 @@ class CloseTicketButton(discord.ui.Button):
         logger.info(f"Ticket {channel.name} closed by {interaction.user.name}")
 
         # Delete the channel after a short delay
+        channel_to_delete = channel  # Store reference for deletion after logging
         try:
-
             # log ticket using the channel's topic metadata
             channel_topic = channel.topic
             if channel_topic and channel_topic.startswith("{"):
@@ -446,57 +446,56 @@ class CloseTicketButton(discord.ui.Button):
                 result = await DiscordTranscript.export(channel, bot=self.bot)
                 if not result:
                     logger.error("Failed to generate transcript.")
-                    return
-                # send transcript as attachment to a log channel
-                log_channel = ticket_metadata["ticket_config"].get("log_channel")
-                if log_channel:
-                    log_ch = interaction.guild.get_channel(log_channel)
-                    if log_ch:
-                        transcript_file = discord.File(
-                            io.BytesIO(result.encode()),
-                            filename=f"transcript-{channel.name}.html",
-                        )
-                        ticket_created_at = ticket_metadata["ticket_config"].get(
-                            "created_at"
-                        )
-                        now = int(discord.utils.utcnow().timestamp())
-
-                        ticket_duration = (
-                            (now - ticket_created_at) / 3600 if ticket_created_at else 0
-                        )
-
-                        # Get all pinned messages from the ticket channel
-                        pinned_messages = await channel.pins()
-                        pinned_content = ""
-                        if pinned_messages:
-                            pinned_content = "\n\n**Pinned Messages:**\n"
-                            for pin_msg in pinned_messages:
-                                pinned_content += (
-                                    f"- {pin_msg.author.name}: {pin_msg.content[:100]}...\n"
-                                    if len(pin_msg.content) > 100
-                                    else f"- {pin_msg.author.name}: {pin_msg.content}\n"
-                                )
-
-                        await log_ch.send(
-                            content=f"<t:{now}:R> {channel.name} \n Duration: {round(ticket_duration, 2)} hours.{pinned_content}",
-                            file=transcript_file,
-                        )
-
-                        # Send pinned embeds to log channel
-                        if pinned_messages:
-                            for pin_msg in pinned_messages:
-                                if pin_msg.embeds:
-                                    for embed in pin_msg.embeds:
-                                        await log_ch.send(embed=embed)
-                        logger.info("Logging ticket to database")
-                        origin_org_guild = ticket_metadata["ticket_config"].get(
-                            "ticket_from_guild"
-                        )
-                        if not origin_org_guild:
-                            logger.error(
-                                f"Missing 'ticket_from_guild' in ticket metadata for channel: {channel.name}"
+                else:
+                    # send transcript as attachment to a log channel
+                    log_channel = ticket_metadata["ticket_config"].get("log_channel")
+                    if log_channel:
+                        log_ch = interaction.guild.get_channel(log_channel)
+                        if log_ch:
+                            transcript_file = discord.File(
+                                io.BytesIO(result.encode()),
+                                filename=f"transcript-{channel.name}.html",
                             )
-                            return
+                            ticket_created_at = ticket_metadata["ticket_config"].get(
+                                "created_at"
+                            )
+                            now = int(discord.utils.utcnow().timestamp())
+
+                            ticket_duration = (
+                                (now - ticket_created_at) / 3600
+                                if ticket_created_at
+                                else 0
+                            )
+
+                            # Get all pinned messages from the ticket channel
+                            pinned_messages = await channel.pins()
+                            pinned_content = ""
+                            if pinned_messages:
+                                pinned_content = "\n\n**Pinned Messages:**\n"
+                                for pin_msg in pinned_messages:
+                                    pinned_content += (
+                                        f"- {pin_msg.author.name}: {pin_msg.content[:100]}...\n"
+                                        if len(pin_msg.content) > 100
+                                        else f"- {pin_msg.author.name}: {pin_msg.content}\n"
+                                    )
+
+                            await log_ch.send(
+                                content=f"<t:{now}:R> {channel.name} \n Duration: {round(ticket_duration, 2)} hours.{pinned_content}",
+                                file=transcript_file,
+                            )
+
+                            # Send pinned embeds to log channel
+                            if pinned_messages:
+                                for pin_msg in pinned_messages:
+                                    if pin_msg.embeds:
+                                        for embed in pin_msg.embeds:
+                                            await log_ch.send(embed=embed)
+
+                    logger.info("Logging ticket to database")
+                    origin_org_guild = ticket_metadata["ticket_config"].get(
+                        "ticket_from_guild"
+                    )
+                    if origin_org_guild:
                         ticket_type = ticket_metadata["ticket_config"]["ticket_type"]
                         try:
                             success_saving_in_database = (
@@ -517,20 +516,27 @@ class CloseTicketButton(discord.ui.Button):
                             logger.error(
                                 f"⚠️ Failed to save ticket to database: {db_error}"
                             )
-                        await channel.delete()
-                        logger.info(f"✅ Deleted ticket channel: {channel.name}")
-
-                        # notify ticket creator, continue if fails
-                        try:
-                            ticket_owner = await self.bot.fetch_user(ticket_owner_id)
-                            await ticket_owner.send(
-                                f"Your {ticket_type} ticket has been closed."
-                            )
-                        except Exception as e:
-                            logger.warning(f"⚠️ Could not notify ticket owner: {e}")
-
+                    else:
+                        logger.error(
+                            f"Missing 'ticket_from_guild' in ticket metadata for channel: {channel.name}"
+                        )
         except Exception as e:
-            logger.error(f"❌ Failed to delete ticket channel {channel.name}: {e}")
+            logger.error(f"❌ Error processing ticket closure: {e}")
+
+        # Always delete the channel, regardless of logging success
+        try:
+            await asyncio.sleep(3)  # wait before deleting channel
+            await channel_to_delete.delete()
+            logger.info(f"✅ Deleted ticket channel: {channel_to_delete.name}")
+        except Exception as e:
+            logger.error(f"❌ Failed to delete ticket channel: {e}")
+
+        # Notify ticket creator after deletion attempt
+        try:
+            ticket_owner = await self.bot.fetch_user(ticket_owner_id)
+            await ticket_owner.send("Your ticket has been closed.")
+        except Exception as e:
+            logger.warning(f"⚠️ Could not notify ticket owner: {e}")
 
 
 class TicketSupportEmbedManager:

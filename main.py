@@ -35,7 +35,7 @@ sentry_sdk.init(
 sentry_handler = EventHandler(level=logging.ERROR)
 
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,
     format="%(asctime)s - %(levelname)s - %(message)s",
     handlers=[
         logging.StreamHandler(sys.stdout),
@@ -189,15 +189,34 @@ async def on_message(message: discord.Message):
             MAX_FILE_SIZE = 25 * 1024 * 1024  # 25 MB limit
             ALLOWED_EXTENSIONS = {
                 # Images
-                'png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp',
+                "png",
+                "jpg",
+                "jpeg",
+                "gif",
+                "webp",
+                "bmp",
                 # Documents
-                'pdf', 'doc', 'docx', 'xls', 'xlsx', 'txt', 'csv',
+                "pdf",
+                "doc",
+                "docx",
+                "xls",
+                "xlsx",
+                "txt",
+                "csv",
                 # Archives
-                'zip', 'rar', '7z', 'tar', 'gz',
+                "zip",
+                "rar",
+                "7z",
+                "tar",
+                "gz",
                 # Media
-                'mp3', 'mp4', 'wav', 'mov', 'avi'
+                "mp3",
+                "mp4",
+                "wav",
+                "mov",
+                "avi",
             }
-            
+
             if message.attachments:
                 for attachment in message.attachments:
                     # Validate file size
@@ -207,20 +226,28 @@ async def on_message(message: discord.Message):
                             value=f"[{attachment.filename}]({attachment.url}) - File exceeds 25 MB limit",
                             inline=False,
                         )
-                        logger.warning(f"File {attachment.filename} exceeds size limit: {attachment.size} bytes")
+                        logger.warning(
+                            f"File {attachment.filename} exceeds size limit: {attachment.size} bytes"
+                        )
                         continue
-                    
+
                     # Validate file extension
-                    file_ext = attachment.filename.rsplit('.', 1)[-1].lower() if '.' in attachment.filename else ''
+                    file_ext = (
+                        attachment.filename.rsplit(".", 1)[-1].lower()
+                        if "." in attachment.filename
+                        else ""
+                    )
                     if file_ext not in ALLOWED_EXTENSIONS:
                         embed.add_field(
                             name="Attachment (Blocked)",
                             value=f"[{attachment.filename}]({attachment.url}) - File type not allowed",
                             inline=False,
                         )
-                        logger.warning(f"File {attachment.filename} has disallowed extension: {file_ext}")
+                        logger.warning(
+                            f"File {attachment.filename} has disallowed extension: {file_ext}"
+                        )
                         continue
-                    
+
                     embed.add_field(
                         name="Attachment",
                         value=f"[{attachment.filename}]({attachment.url})",
