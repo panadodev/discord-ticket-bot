@@ -2,6 +2,8 @@ import asyncio
 import io
 import json
 import logging
+import os
+from typing import Optional
 
 import discord
 import DiscordTranscript
@@ -16,13 +18,28 @@ load_dotenv()
 logger = logging.getLogger("main.py")
 
 
-def load_config():
-    with open("config.json", "r", encoding="utf-8") as f:
-        config = json.load(f)["config"]
-    if not config or config is None:
-        logger.error("Failed to load configuration from config.json")
+def load_config() -> Optional[dict]:
+    """Load configuration from config.json"""
+    try:
+        if not os.path.exists("config.json"):
+            logger.error("config.json file not found")
+            return None
+            
+        with open("config.json", "r", encoding="utf-8") as f:
+            data = json.load(f)
+            config = data.get("config")
+            
+        if not config:
+            logger.error("Failed to load configuration from config.json - 'config' key missing")
+            return None
+            
+        return config
+    except json.JSONDecodeError as e:
+        logger.error(f"Failed to parse config.json: {e}")
         return None
-    return config
+    except Exception as e:
+        logger.error(f"Error loading config.json: {e}")
+        return None
 
 
 # Track users currently in ticket creation process
@@ -126,7 +143,7 @@ class TicketButton(discord.ui.Button):
             )
             logger.warning(f"Cannot DM user {user.name} - DMs are disabled")
         except Exception as e:
-            logger.error(f"Error creating ticket for {user.name}: {e}")
+            logger.error(f"Error creating ticket for {user.name}: {e}", exc_info=True)
             await interaction.followup.send(
                 "❌ An error occurred while creating your ticket. Please try again later.",
                 ephemeral=True,
@@ -137,7 +154,7 @@ class TicketButton(discord.ui.Button):
 
     async def check_existing_ticket(
         self, guild: discord.Guild, user: discord.User, ticket_type: str
-    ) -> discord.TextChannel | None:
+    ) -> Optional[discord.TextChannel]:
         """Check if user already has an open ticket of the same type"""
         # Search for channels matching the pattern: emoji-tickettype-username-...-userid
         username_clean = user.name.lower().replace(" ", "-")
@@ -162,7 +179,7 @@ class TicketButton(discord.ui.Button):
 
     async def collect_answers_via_dm(
         self, user: discord.User, questions: list[str]
-    ) -> list[str] | None:
+    ) -> Optional[list[str]]:
         """Send questions to user via DM and collect answers"""
         dm_channel = await user.create_dm()
         answers = []
@@ -197,7 +214,7 @@ class TicketButton(discord.ui.Button):
 
                 answers.append(message.content)
 
-            except TimeoutError:
+            except asyncio.TimeoutError:
                 await dm_channel.send("⏱️ Ticket creation timed out. Please try again.")
                 logger.info(f"Ticket creation timed out for {user.name}")
                 return None
@@ -226,7 +243,7 @@ class TicketButton(discord.ui.Button):
         ticket_icon = ticket_config["ticket_channel_icon"]
 
         logger.info(
-            f"Ticket icon from config: '{ticket_icon}' (type: {type(ticket_icon)})"
+            f"Ticket icon from config: '{ticket_icon}' (type: {type(ticket_icon)})
         )
 
         # Convert Discord emoji syntax to actual emoji, or use emoji directly
@@ -335,7 +352,7 @@ class TicketButton(discord.ui.Button):
             # Wait a moment for permissions to propagate
             await asyncio.sleep(0.5)
         except Exception as e:
-            logger.error(f"❌ Failed to create ticket channel: {e}")
+            logger.error(f"❌ Failed to create ticket channel: {e}", exc_info=True)
             raise
 
         # Create summary embed
@@ -371,7 +388,7 @@ class TicketButton(discord.ui.Button):
                 f"✅ Sent and pinned ticket summary embed to {ticket_channel.name}"
             )
         except Exception as e:
-            logger.error(f"❌ Failed to send embed to ticket channel: {e}")
+            logger.error(f"❌ Failed to send embed to ticket channel: {e}", exc_info=True)
 
         # Notify user in DM
         try:
@@ -381,7 +398,7 @@ class TicketButton(discord.ui.Button):
         except discord.Forbidden:
             logger.warning(f"⚠️ Cannot send DM to {user.name} - DMs are disabled")
         except Exception as e:
-            logger.error(f"❌ Failed to send DM notification: {e}")
+            logger.error(f"❌ Failed to send DM notification: {e}", exc_info=True)
 
         logger.info(f"Created ticket channel {channel_name} for user {user.name}")
 
@@ -438,103 +455,105 @@ class CloseTicketButton(discord.ui.Button):
 
         logger.info(f"Ticket {channel.name} closed by {interaction.user.name}")
 
-        # Delete the channel after a short delay
-        channel_to_delete = channel  # Store reference for deletion after logging
+        # Store channel reference and generate transcript BEFORE deletion
+        channel_name = channel.name
+        guild_id = interaction.guild.id
+        transcript_result = None
+        ticket_metadata = None
+        
         try:
-            # log ticket using the channel's topic metadata
+            # Parse ticket metadata from channel topic
             channel_topic = channel.topic
             if channel_topic and channel_topic.startswith("{"):
                 ticket_metadata = json.loads(channel_topic)
-                # generate transcript
-                result = await DiscordTranscript.export(channel, bot=self.bot)
-                if not result:
+                
+                # Generate transcript before any deletion
+                transcript_result = await DiscordTranscript.export(channel, bot=self.bot)
+                
+                if not transcript_result:
                     logger.error("Failed to generate transcript.")
                 else:
-                    # send transcript as attachment to a log channel
-                    log_channel = ticket_metadata["ticket_config"].get("log_channel")
-                    if log_channel:
-                        log_ch = interaction.guild.get_channel(log_channel)
-                        if log_ch:
-                            transcript_file = discord.File(
-                                io.BytesIO(result.encode()),
-                                filename=f"transcript-{channel.name}.html",
-                            )
-                            ticket_created_at = ticket_metadata["ticket_config"].get(
-                                "created_at"
-                            )
-                            now = int(discord.utils.utcnow().timestamp())
-
-                            ticket_duration = (
-                                (now - ticket_created_at) / 3600
-                                if ticket_created_at
-                                else 0
-                            )
-
-                            # Get all pinned messages from the ticket channel
-                            pinned_messages = await channel.pins()
-                            pinned_content = ""
-                            if pinned_messages:
-                                pinned_content = "\n\n**Pinned Messages:**\n"
-                                for pin_msg in pinned_messages:
-                                    pinned_content += (
-                                        f"- {pin_msg.author.name}: {pin_msg.content[:100]}...\n"
-                                        if len(pin_msg.content) > 100
-                                        else f"- {pin_msg.author.name}: {pin_msg.content}\n"
-                                    )
-
-                            await log_ch.send(
-                                content=f"<t:{now}:R> {channel.name} \n Duration: {round(ticket_duration, 2)} hours.{pinned_content}",
-                                file=transcript_file,
-                            )
-
-                            # Send pinned embeds to log channel
-                            if pinned_messages:
-                                for pin_msg in pinned_messages:
-                                    if pin_msg.embeds:
-                                        for embed in pin_msg.embeds:
-                                            await log_ch.send(embed=embed)
-
-                    logger.info("Logging ticket to database")
-                    origin_org_guild = ticket_metadata["ticket_config"].get(
-                        "ticket_from_guild"
-                    )
-                    if origin_org_guild:
-                        ticket_type = ticket_metadata["ticket_config"]["ticket_type"]
-                        try:
-                            success_saving_in_database = (
-                                await DatabaseOperations.log_tickets(
-                                    origin_org_guild=origin_org_guild,
-                                    ticket_type=ticket_type,
-                                    transcript=result,
-                                    closed_by=interaction.user.id,
-                                    opened_by=ticket_owner_id,
-                                    created_by=ticket_metadata["ticket_config"][
-                                        "created_by"
-                                    ],
-                                )
-                            )
-                            if success_saving_in_database is None:
-                                logger.error("Failed to log ticket to database.")
-                        except Exception as db_error:
-                            logger.error(
-                                f"⚠️ Failed to save ticket to database: {db_error}"
-                            )
-                    else:
-                        logger.error(
-                            f"Missing 'ticket_from_guild' in ticket metadata for channel: {channel.name}"
-                        )
+                    logger.info(f"✅ Generated transcript for {channel_name}")
+                    
         except Exception as e:
-            logger.error(f"❌ Error processing ticket closure: {e}")
+            logger.error(f"❌ Error generating transcript: {e}", exc_info=True)
 
-        # Always delete the channel, regardless of logging success
+        # Now delete the channel
         try:
-            await asyncio.sleep(3)  # wait before deleting channel
-            await channel_to_delete.delete()
-            logger.info(f"✅ Deleted ticket channel: {channel_to_delete.name}")
+            await asyncio.sleep(3)
+            await channel.delete()
+            logger.info(f"✅ Deleted ticket channel: {channel_name}")
         except Exception as e:
-            logger.error(f"❌ Failed to delete ticket channel: {e}")
+            logger.error(f"❌ Failed to delete ticket channel: {e}", exc_info=True)
+            # Continue with logging even if deletion fails
 
-        # Notify ticket creator after deletion attempt
+        # Log ticket after channel deletion
+        if transcript_result and ticket_metadata:
+            try:
+                log_channel_id = ticket_metadata["ticket_config"].get("log_channel")
+                if log_channel_id:
+                    log_ch = interaction.guild.get_channel(log_channel_id)
+                    if log_ch:
+                        transcript_file = discord.File(
+                            io.BytesIO(transcript_result.encode()),
+                            filename=f"transcript-{channel_name}.html",
+                        )
+                        ticket_created_at = ticket_metadata["ticket_config"].get(
+                            "created_at"
+                        )
+                        now = int(discord.utils.utcnow().timestamp())
+
+                        ticket_duration = (
+                            (now - ticket_created_at) / 3600
+                            if ticket_created_at
+                            else 0
+                        )
+
+                        # Get pinned messages info (channel is deleted, use stored data if available)
+                        pinned_content = ""
+
+                        await log_ch.send(
+                            content=f"<t:{now}:R> {channel_name} \n Duration: {round(ticket_duration, 2)} hours.",
+                            file=transcript_file,
+                        )
+                        logger.info(f"✅ Logged transcript to log channel")
+
+                logger.info("Logging ticket to database")
+                origin_org_guild = ticket_metadata["ticket_config"].get(
+                    "ticket_from_guild"
+                )
+                if origin_org_guild:
+                    ticket_type = ticket_metadata["ticket_config"]["ticket_type"]
+                    try:
+                        success_saving_in_database = (
+                            await DatabaseOperations.log_tickets(
+                                origin_org_guild=origin_org_guild,
+                                ticket_type=ticket_type,
+                                transcript=transcript_result,
+                                closed_by=interaction.user.id,
+                                opened_by=ticket_owner_id,
+                                created_by=ticket_metadata["ticket_config"](
+                                    "created_by"
+                                ),
+                            )
+                        )
+                        if success_saving_in_database is None:
+                            logger.error("Failed to log ticket to database.")
+                        else:
+                            logger.info(f"✅ Logged ticket to database")
+                    except Exception as db_error:
+                        logger.error(
+                            f"⚠️ Failed to save ticket to database: {db_error}",
+                            exc_info=True
+                        )
+                else:
+                    logger.error(
+                        f"Missing 'ticket_from_guild' in ticket metadata for channel: {channel_name}"
+                    )
+            except Exception as e:
+                logger.error(f"❌ Error processing ticket closure logging: {e}", exc_info=True)
+
+        # Notify ticket creator after deletion
         try:
             ticket_owner = await self.bot.fetch_user(ticket_owner_id)
             await ticket_owner.send("Your ticket has been closed.")
@@ -544,7 +563,7 @@ class CloseTicketButton(discord.ui.Button):
         # Update bot status with current ticket count
         try:
             count = await DatabaseOperations.tickets_handled_this_year(
-                origin_org_guild=interaction.guild.id
+                origin_org_guild=guild_id
             )
             await self.bot.change_presence(
                 activity=discord.Activity(
@@ -553,7 +572,7 @@ class CloseTicketButton(discord.ui.Button):
                 )
             )
         except Exception as e:
-            logger.error(f"❌ Failed to update bot status: {e}")
+            logger.error(f"❌ Failed to update bot status: {e}", exc_info=True)
 
 
 class TicketSupportEmbedManager:
@@ -562,13 +581,17 @@ class TicketSupportEmbedManager:
         self.config = load_config()
 
     async def create_ticket_support_embed(self, channel: discord.TextChannel):
+        if not self.config:
+            logger.error("Cannot create ticket support embed - config not loaded")
+            return
+            
         embed = discord.Embed(
             title="Ticket Support",
             description="Press the buttons below for support.",
             color=discord.Color.blue(),
         )
 
-        tickets_config = self.config["orgs"]["tickets"]  # type: ignore
+        tickets_config = self.config["orgs"]["tickets"]
 
         view = discord.ui.View(timeout=None)
 
@@ -587,11 +610,13 @@ class TicketSupportEmbedManager:
 
     def create_persistent_view(self) -> discord.ui.View:
         """Create a persistent view with all ticket buttons for bot initialization"""
+        view = discord.ui.View(timeout=None)
+        
         if not self.config:
-            return discord.ui.View(timeout=None)
+            logger.error("Cannot create persistent view - config not loaded")
+            return view
 
         tickets_config = self.config["orgs"]["tickets"]
-        view = discord.ui.View(timeout=None)
 
         for ticket_type, ticket_info in tickets_config.items():
             button = TicketButton(
@@ -608,7 +633,7 @@ class TicketSupportEmbedManager:
 
 async def find_user_ticket(
     guild: discord.Guild, user_id: int
-) -> discord.TextChannel | None:
+) -> Optional[discord.TextChannel]:
     """Find the most recently created ticket channel for a user"""
     user_tickets = []
 
@@ -691,10 +716,12 @@ class TicketTypeSelect(discord.ui.Select):
             )
             logger.error(f"Bot cannot access guild with ID {main_guild_id}")
             return
+            
         overwrites = {
             guild.default_role: discord.PermissionOverwrite(read_messages=False),
             guild.me: discord.PermissionOverwrite(
                 read_messages=True,
+                send_messages=True,
                 read_message_history=True,
                 manage_channels=True,
                 embed_links=True,
@@ -723,7 +750,6 @@ class TicketTypeSelect(discord.ui.Select):
                         )
 
         # Add permissions for viewable roles
-        orgs_config = self.config.get("orgs", {})
         designated_role = ticket_config.get("designated")
         for role_key in ticket_config.get("has_perms", []):
             role_id = None
@@ -756,7 +782,7 @@ class TicketTypeSelect(discord.ui.Select):
             # Apply all overwrites at once to replace old permissions
             await channel.edit(overwrites=overwrites)
         except Exception as e:
-            logger.error(f"Failed to update channel permissions: {e}")
+            logger.error(f"Failed to update channel permissions: {e}", exc_info=True)
             await interaction.followup.send(
                 "❌ Failed to update channel permissions.", ephemeral=True
             )
@@ -790,27 +816,28 @@ class TicketTypeSelect(discord.ui.Select):
                 logger.warning(f"Failed to update channel name: {e}")
 
         # Update channel topic metadata
-        ticket_metadata = json.loads(channel.topic)
-        ticket_metadata["ticket_config"]["button_name"] = ticket_config["button_name"]
-        ticket_metadata["ticket_config"]["ticket_type"] = selected_type
-        ticket_metadata["ticket_config"]["button_id"] = ticket_config["button_id"]
-        ticket_metadata["ticket_config"]["log_channel"] = ticket_config.get(
-            "log_channel"
-        )
-        ticket_metadata["ticket_config"]["ticket_channel_icon"] = ticket_icon
-        ticket_metadata["ticket_config"]["has_perms"] = ticket_config.get(
-            "has_perms", []
-        )
-        ticket_metadata["ticket_config"]["color"] = ticket_config.get(
-            "embed_color", "#ffffff"
-        )
+        if channel.topic and channel.topic.startswith("{"):
+            try:
+                ticket_metadata = json.loads(channel.topic)
+                ticket_metadata["ticket_config"]["button_name"] = ticket_config["button_name"]
+                ticket_metadata["ticket_config"]["ticket_type"] = selected_type
+                ticket_metadata["ticket_config"]["button_id"] = ticket_config["button_id"]
+                ticket_metadata["ticket_config"]["log_channel"] = ticket_config.get(
+                    "log_channel"
+                )
+                ticket_metadata["ticket_config"]["ticket_channel_icon"] = ticket_icon
+                ticket_metadata["ticket_config"]["has_perms"] = ticket_config.get(
+                    "has_perms", []
+                )
+                ticket_metadata["ticket_config"]["color"] = ticket_config.get(
+                    "embed_color", "#ffffff"
+                )
 
-        try:
-            # 5 second delay
-            await asyncio.sleep(5)
-            await channel.edit(topic=json.dumps(ticket_metadata))
-        except Exception as e:
-            logger.warning(f"Failed to update channel topic: {e}")
+                # 5 second delay
+                await asyncio.sleep(5)
+                await channel.edit(topic=json.dumps(ticket_metadata))
+            except Exception as e:
+                logger.warning(f"Failed to update channel topic: {e}", exc_info=True)
 
         # Send confirmation message
         embed = discord.Embed(
@@ -846,26 +873,22 @@ class DiscordCommands(commands.Cog):
             logger.error("Failed to load config in DiscordCommands")
 
     @app_commands.command(name="assign")
-    @app_commands.guilds(
-        discord.Object(id=868656215834624020)
-    )  # Hardcoded for registration
     @app_commands.describe()
     async def assign_ticket(self, interaction: Interaction) -> None:
-        await interaction.response.defer(ephemeral=True)
         """Reassign a ticket to a different team"""
+        await interaction.response.defer(ephemeral=True)
 
         # Check if config loaded successfully
         if not self.config:
             await interaction.followup.send(
-                "❌ Main guild ID not configured.", ephemeral=True
+                "❌ Configuration not loaded. Please contact an administrator.", ephemeral=True
             )
             logger.error("Config not loaded in assign_ticket")
             return
 
         # Ensure command is used in the main guild only
-        if not interaction.guild or interaction.guild.id != self.config.get(
-            "main_guild_id"
-        ):
+        main_guild_id = self.config.get("main_guild_id")
+        if not interaction.guild or interaction.guild.id != main_guild_id:
             await interaction.followup.send(
                 "❌ This command can only be used in the main server.", ephemeral=True
             )
@@ -881,10 +904,12 @@ class DiscordCommands(commands.Cog):
             return
 
         # Verify it's a ticket channel by checking the topic
+        incoming_cat_id = self.config.get("incoming_tickets_cat")
         if (
             not channel.topic
             or not channel.topic.startswith("{")
-            or not channel.category.id == self.config.get("incoming_tickets_cat")
+            or not channel.category
+            or channel.category.id != incoming_cat_id
         ):
             await interaction.followup.send(
                 "❌ This doesn't appear to be a valid ticket channel.", ephemeral=True
@@ -892,22 +917,41 @@ class DiscordCommands(commands.Cog):
             return
 
         # Get the current ticket type from the channel topic metadata
-        ticket_metadata = json.loads(channel.topic)
-        current_ticket_type = ticket_metadata["ticket_config"]["button_id"]
+        try:
+            ticket_metadata = json.loads(channel.topic)
+            current_ticket_type = ticket_metadata["ticket_config"]["button_id"]
+        except (json.JSONDecodeError, KeyError) as e:
+            logger.error(f"Failed to parse ticket metadata: {e}")
+            await interaction.followup.send(
+                "❌ Could not read ticket information.", ephemeral=True
+            )
+            return
+
+        # Create a filtered config with only other ticket types
+        filtered_tickets = {
+            k: v
+            for k, v in self.config["orgs"]["tickets"].items()
+            if k != current_ticket_type
+        }
+        
+        if not filtered_tickets:
+            await interaction.followup.send(
+                "❌ No other ticket types available to reassign to.", ephemeral=True
+            )
+            return
+
+        # Create filtered config with complete structure
+        filtered_config = {
+            "orgs": {
+                "tickets": filtered_tickets,
+                **{k: v for k, v in self.config.get("orgs", {}).items() if k != "tickets"}
+            },
+            "main_guild_id": self.config.get("main_guild_id"),
+            "incoming_tickets_cat": self.config.get("incoming_tickets_cat")
+        }
 
         # Create a select menu view excluding the current ticket type
-        view = TicketTypeSelectView(
-            {
-                "orgs": {
-                    "tickets": {
-                        k: v
-                        for k, v in self.config["orgs"]["tickets"].items()
-                        if k != current_ticket_type
-                    }
-                }
-            },
-            self.bot,
-        )
+        view = TicketTypeSelectView(filtered_config, self.bot)
 
         await interaction.followup.send(
             "Select the ticket type to reassign this ticket to:",
