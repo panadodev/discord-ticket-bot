@@ -24,15 +24,17 @@ def load_config() -> Optional[dict]:
         if not os.path.exists("config.json"):
             logger.error("config.json file not found")
             return None
-            
+
         with open("config.json", "r", encoding="utf-8") as f:
             data = json.load(f)
             config = data.get("config")
-            
+
         if not config:
-            logger.error("Failed to load configuration from config.json - 'config' key missing")
+            logger.error(
+                "Failed to load configuration from config.json - 'config' key missing"
+            )
             return None
-            
+
         return config
     except json.JSONDecodeError as e:
         logger.error(f"Failed to parse config.json: {e}")
@@ -243,7 +245,7 @@ class TicketButton(discord.ui.Button):
         ticket_icon = ticket_config["ticket_channel_icon"]
 
         logger.info(
-            f"Ticket icon from config: '{ticket_icon}' (type: {type(ticket_icon)})
+            f"Ticket icon from config: '{ticket_icon}' (type: {type(ticket_icon)})"
         )
 
         # Convert Discord emoji syntax to actual emoji, or use emoji directly
@@ -388,7 +390,9 @@ class TicketButton(discord.ui.Button):
                 f"✅ Sent and pinned ticket summary embed to {ticket_channel.name}"
             )
         except Exception as e:
-            logger.error(f"❌ Failed to send embed to ticket channel: {e}", exc_info=True)
+            logger.error(
+                f"❌ Failed to send embed to ticket channel: {e}", exc_info=True
+            )
 
         # Notify user in DM
         try:
@@ -460,21 +464,23 @@ class CloseTicketButton(discord.ui.Button):
         guild_id = interaction.guild.id
         transcript_result = None
         ticket_metadata = None
-        
+
         try:
             # Parse ticket metadata from channel topic
             channel_topic = channel.topic
             if channel_topic and channel_topic.startswith("{"):
                 ticket_metadata = json.loads(channel_topic)
-                
+
                 # Generate transcript before any deletion
-                transcript_result = await DiscordTranscript.export(channel, bot=self.bot)
-                
+                transcript_result = await DiscordTranscript.export(
+                    channel, bot=self.bot
+                )
+
                 if not transcript_result:
                     logger.error("Failed to generate transcript.")
                 else:
                     logger.info(f"✅ Generated transcript for {channel_name}")
-                    
+
         except Exception as e:
             logger.error(f"❌ Error generating transcript: {e}", exc_info=True)
 
@@ -504,9 +510,7 @@ class CloseTicketButton(discord.ui.Button):
                         now = int(discord.utils.utcnow().timestamp())
 
                         ticket_duration = (
-                            (now - ticket_created_at) / 3600
-                            if ticket_created_at
-                            else 0
+                            (now - ticket_created_at) / 3600 if ticket_created_at else 0
                         )
 
                         # Get pinned messages info (channel is deleted, use stored data if available)
@@ -544,14 +548,16 @@ class CloseTicketButton(discord.ui.Button):
                     except Exception as db_error:
                         logger.error(
                             f"⚠️ Failed to save ticket to database: {db_error}",
-                            exc_info=True
+                            exc_info=True,
                         )
                 else:
                     logger.error(
                         f"Missing 'ticket_from_guild' in ticket metadata for channel: {channel_name}"
                     )
             except Exception as e:
-                logger.error(f"❌ Error processing ticket closure logging: {e}", exc_info=True)
+                logger.error(
+                    f"❌ Error processing ticket closure logging: {e}", exc_info=True
+                )
 
         # Notify ticket creator after deletion
         try:
@@ -584,7 +590,7 @@ class TicketSupportEmbedManager:
         if not self.config:
             logger.error("Cannot create ticket support embed - config not loaded")
             return
-            
+
         embed = discord.Embed(
             title="Ticket Support",
             description="Press the buttons below for support.",
@@ -611,7 +617,7 @@ class TicketSupportEmbedManager:
     def create_persistent_view(self) -> discord.ui.View:
         """Create a persistent view with all ticket buttons for bot initialization"""
         view = discord.ui.View(timeout=None)
-        
+
         if not self.config:
             logger.error("Cannot create persistent view - config not loaded")
             return view
@@ -716,7 +722,7 @@ class TicketTypeSelect(discord.ui.Select):
             )
             logger.error(f"Bot cannot access guild with ID {main_guild_id}")
             return
-            
+
         overwrites = {
             guild.default_role: discord.PermissionOverwrite(read_messages=False),
             guild.me: discord.PermissionOverwrite(
@@ -819,9 +825,13 @@ class TicketTypeSelect(discord.ui.Select):
         if channel.topic and channel.topic.startswith("{"):
             try:
                 ticket_metadata = json.loads(channel.topic)
-                ticket_metadata["ticket_config"]["button_name"] = ticket_config["button_name"]
+                ticket_metadata["ticket_config"]["button_name"] = ticket_config[
+                    "button_name"
+                ]
                 ticket_metadata["ticket_config"]["ticket_type"] = selected_type
-                ticket_metadata["ticket_config"]["button_id"] = ticket_config["button_id"]
+                ticket_metadata["ticket_config"]["button_id"] = ticket_config[
+                    "button_id"
+                ]
                 ticket_metadata["ticket_config"]["log_channel"] = ticket_config.get(
                     "log_channel"
                 )
@@ -881,7 +891,8 @@ class DiscordCommands(commands.Cog):
         # Check if config loaded successfully
         if not self.config:
             await interaction.followup.send(
-                "❌ Configuration not loaded. Please contact an administrator.", ephemeral=True
+                "❌ Configuration not loaded. Please contact an administrator.",
+                ephemeral=True,
             )
             logger.error("Config not loaded in assign_ticket")
             return
@@ -933,7 +944,7 @@ class DiscordCommands(commands.Cog):
             for k, v in self.config["orgs"]["tickets"].items()
             if k != current_ticket_type
         }
-        
+
         if not filtered_tickets:
             await interaction.followup.send(
                 "❌ No other ticket types available to reassign to.", ephemeral=True
@@ -944,10 +955,14 @@ class DiscordCommands(commands.Cog):
         filtered_config = {
             "orgs": {
                 "tickets": filtered_tickets,
-                **{k: v for k, v in self.config.get("orgs", {}).items() if k != "tickets"}
+                **{
+                    k: v
+                    for k, v in self.config.get("orgs", {}).items()
+                    if k != "tickets"
+                },
             },
             "main_guild_id": self.config.get("main_guild_id"),
-            "incoming_tickets_cat": self.config.get("incoming_tickets_cat")
+            "incoming_tickets_cat": self.config.get("incoming_tickets_cat"),
         }
 
         # Create a select menu view excluding the current ticket type
