@@ -541,6 +541,20 @@ class CloseTicketButton(discord.ui.Button):
         except Exception as e:
             logger.warning(f"⚠️ Could not notify ticket owner: {e}")
 
+        # Update bot status with current ticket count
+        try:
+            count = await DatabaseOperations.tickets_handled_this_year(
+                origin_org_guild=interaction.guild.id
+            )
+            await self.bot.change_presence(
+                activity=discord.Activity(
+                    type=discord.ActivityType.watching,
+                    name=f"{count} tickets handled this year",
+                )
+            )
+        except Exception as e:
+            logger.error(f"❌ Failed to update bot status: {e}")
+
 
 class TicketSupportEmbedManager:
     def __init__(self, bot: commands.Bot):

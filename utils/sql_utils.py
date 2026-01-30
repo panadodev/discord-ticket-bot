@@ -57,3 +57,21 @@ class DatabaseOperations:
             logger.error("Failed to log ticket to the database.")
 
         return success
+
+    @staticmethod
+    async def tickets_handled_this_year(origin_org_guild: int):
+        current_year = time.gmtime().tm_year
+        start_of_year = int(
+            time.mktime(time.strptime(f"{current_year}-01-01", "%Y-%m-%d"))
+        )
+        end_of_year = int(
+            time.mktime(time.strptime(f"{current_year}-12-31", "%Y-%m-%d"))
+        )
+
+        count = await tickets.filter(
+            origin_org_guild=origin_org_guild,
+            created__gte=start_of_year,
+            created__lte=end_of_year,
+        ).count()
+
+        return count
