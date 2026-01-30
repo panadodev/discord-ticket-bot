@@ -397,11 +397,14 @@ class CloseTicketButton(discord.ui.Button):
 
     async def callback(self, interaction: discord.Interaction):
         """Handle close ticket button click"""
+        # Defer immediately to prevent interaction timeout
+        await interaction.response.defer()
+
         channel = interaction.channel
 
         # Check if the channel is a ticket channel
         if not isinstance(channel, discord.TextChannel):
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "❌ This can only be used in a ticket channel.", ephemeral=True
             )
             return
@@ -412,7 +415,7 @@ class CloseTicketButton(discord.ui.Button):
         try:
             ticket_owner_id = int(channel_name_parts[-1])
         except (ValueError, IndexError):
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "❌ Could not determine ticket owner.", ephemeral=True
             )
             return
@@ -422,13 +425,13 @@ class CloseTicketButton(discord.ui.Button):
             interaction.user.id != ticket_owner_id
             and not interaction.user.guild_permissions.manage_channels
         ):
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "❌ Only the ticket owner or staff can close this ticket.",
                 ephemeral=True,
             )
             return
 
-        await interaction.response.send_message(
+        await interaction.followup.send(
             f"Ticket is being closed by {interaction.user.mention}, generating transcript...",
             ephemeral=False,
         )
