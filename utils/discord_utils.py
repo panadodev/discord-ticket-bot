@@ -309,7 +309,7 @@ class TicketButton(discord.ui.Button):
 
         # Create sanitized channel name using ticket type
         username_clean = user.name.lower().replace(" ", "-")
-        guild_clean = guild.name.lower().replace(" ", "-")
+        guild_clean = source_org.lower().replace(" ", "-")
         channel_name = f"{username_clean}-{guild_clean}-{user.id}"
         # Remove any special characters that Discord doesn't allow
         channel_name = "".join(c for c in channel_name if c.isalnum() or c in "-_")
@@ -1010,3 +1010,9 @@ class DiscordCommands(commands.Cog):
             view=view,
             ephemeral=True,
         )
+        
+    @app_commands(name="close_ticket")
+    async def close_ticket_command(self, interaction: Interaction) -> None:
+        """Close the current ticket"""
+        close_button = CloseTicketButton(self.bot)
+        await close_button.callback(interaction)
