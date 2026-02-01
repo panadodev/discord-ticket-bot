@@ -84,7 +84,7 @@
                     ]
                 },
                 "mute_appeals": {
-                    "log_channel": 1033378521464864060,
+                    "log_channel": 1394801361857806347,
                     "button_name": "Mute Appeal",
                     "button_id": "mute_appeal",
                     "button_style": "PRIMARY",
@@ -120,7 +120,7 @@
                     ]
                 },
                 "vip_related": {
-                    "log_channel": 1466406010636149763,
+                    "log_channel": 1033378515816550512,
                     "button_name": "VIP Related",
                     "button_id": "vip_related",
                     "designated": "management",
