@@ -17,6 +17,23 @@ load_dotenv()
 
 logger = logging.getLogger("main.py")
 
+# Discord text limits
+DISCORD_EMBED_TITLE_LIMIT = 256
+DISCORD_EMBED_DESCRIPTION_LIMIT = 4096
+DISCORD_EMBED_FIELD_NAME_LIMIT = 256
+DISCORD_EMBED_FIELD_VALUE_LIMIT = 1024
+DISCORD_MESSAGE_LIMIT = 2000
+
+
+def truncate_text(text: str, max_length: int, suffix: str = "...") -> str:
+    """Truncate text to fit Discord's limits"""
+    if not text:
+        return ""
+    text = str(text)
+    if len(text) <= max_length:
+        return text
+    return text[:max_length - len(suffix)] + suffix
+
 
 def load_config() -> Optional[dict]:
     """Load configuration from config.json"""
@@ -199,15 +216,18 @@ class TicketButton(discord.ui.Button):
         answers = []
 
         await dm_channel.send(
-            "📝 **Ticket Creation Process**\n"
-            "Please answer the following questions. You have 10 minutes to respond to each question. Please note the system is still a WIP, apologies for any inconvenience.\n"
-            "Type `cancel` at any time to cancel the ticket creation."
+            truncate_text(
+                "📝 **Ticket Creation Process**\n"
+                "Please answer the following questions. You have 10 minutes to respond to each question. Please note the system is still a WIP, apologies for any inconvenience.\n"
+                "Type `cancel` at any time to cancel the ticket creation.",
+                DISCORD_MESSAGE_LIMIT
+            )
         )
 
         for i, question in enumerate(questions, 1):
             embed = discord.Embed(
-                title=f"Question {i}/{len(questions)}",
-                description=question,
+                title=truncate_text(f"Question {i}/{len(questions)}", DISCORD_EMBED_TITLE_LIMIT),
+                description=truncate_text(question, DISCORD_EMBED_DESCRIPTION_LIMIT),
                 color=discord.Color.blue(),
             )
             await dm_channel.send(embed=embed)
@@ -226,7 +246,15 @@ class TicketButton(discord.ui.Button):
                     logger.info(f"User {user.name} cancelled ticket creation")
                     return None
 
-                answers.append(message.content)
+                # Truncate answer to fit Discord limits (will be used in embed field)
+                truncated_answer = truncate_text(message.content, DISCORD_EMBED_FIELD_VALUE_LIMIT)
+                answers.append(truncated_answer)
+                
+                # Notify user if their answer was truncated
+                if len(message.content) > DISCORD_EMBED_FIELD_VALUE_LIMIT:
+                    await dm_channel.send(
+                        f"⚠️ Your answer was too long and has been truncated to {DISCORD_EMBED_FIELD_VALUE_LIMIT} characters."
+                    )
 
             except asyncio.TimeoutError:
                 await dm_channel.send("⏱️ Ticket creation timed out. Please try again.")
@@ -371,19 +399,23 @@ class TicketButton(discord.ui.Button):
 
         # Create summary embed
         embed = discord.Embed(
-            title=f"{ticket_config['button_name']}",
-            description=f"{user.mention}",
+            title=truncate_text(ticket_config['button_name'], DISCORD_EMBED_TITLE_LIMIT),
+            description=truncate_text(f"{user.mention}", DISCORD_EMBED_DESCRIPTION_LIMIT),
             color=discord.Color(
                 int(ticket_config.get("embed_color", "#ffffff").lstrip("#"), 16)
             ),
         )
         embed.set_thumbnail(url=user.display_avatar.url)
-        embed.set_footer(text=f"{self.ticket_type}-{source_org} (User !r to reply)")
+        embed.set_footer(text=truncate_text(f"{self.ticket_type}-{source_org} (User !r to reply)", DISCORD_EMBED_TITLE_LIMIT))
 
         # Add questions and answers
         questions = ticket_config.get("questions", [])
         for i, (question, answer) in enumerate(zip(questions, answers), 1):
-            embed.add_field(name=f"{question}", value=answer, inline=False)
+            embed.add_field(
+                name=truncate_text(question, DISCORD_EMBED_FIELD_NAME_LIMIT), 
+                value=truncate_text(answer, DISCORD_EMBED_FIELD_VALUE_LIMIT), 
+                inline=False
+            )
 
         # Create close button view
         close_button = CloseTicketButton(self.bot)
@@ -517,8 +549,12 @@ class CloseTicketButton(discord.ui.Button):
                         # Get pinned messages info (channel is deleted, use stored data if available)
                         pinned_content = ""
 
+                        log_message = truncate_text(
+                            f"<t:{now}:R> {channel_name} \n Duration: {round(ticket_duration, 2)} hours.",
+                            DISCORD_MESSAGE_LIMIT
+                        )
                         await log_ch.send(
-                            content=f"<t:{now}:R> {channel_name} \n Duration: {round(ticket_duration, 2)} hours.",
+                            content=log_message,
                             file=transcript_file,
                         )
                         logger.info(f"✅ Logged transcript to log channel")
@@ -591,8 +627,8 @@ class TicketSupportEmbedManager:
             return
 
         embed = discord.Embed(
-            title="Ticket Support",
-            description="Press the buttons below for support.",
+            title=truncate_text("Ticket Support", DISCORD_EMBED_TITLE_LIMIT),
+            description=truncate_text("Press the buttons below for support.", DISCORD_EMBED_DESCRIPTION_LIMIT),
             color=discord.Color.blue(),
         )
 
@@ -852,8 +888,8 @@ class TicketTypeSelect(discord.ui.Select):
 
         # Send confirmation message
         embed = discord.Embed(
-            title="✅ Ticket Reassigned",
-            description=f"This ticket has been reassigned to **{selected_type}** team by {interaction.user.mention}",
+            title=truncate_text("✅ Ticket Reassigned", DISCORD_EMBED_TITLE_LIMIT),
+            description=truncate_text(f"This ticket has been reassigned to **{selected_type}** team by {interaction.user.mention}", DISCORD_EMBED_DESCRIPTION_LIMIT),
             color=discord.Color(
                 int(ticket_config.get("embed_color", "#ffffff").lstrip("#"), 16)
             ),
