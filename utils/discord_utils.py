@@ -603,11 +603,12 @@ class TicketSupportEmbedManager:
 
         # Create buttons for each ticket type
         for ticket_type, ticket_info in tickets_config.items():
+            button_config = ticket_info["button_style"]
             button = TicketButton(
                 button_name=ticket_info["button_name"],
                 button_id=ticket_info["button_id"],
                 ticket_type=ticket_type,
-                config=self.config,
+                config=button_config,
                 bot=self.bot,
             )
             view.add_item(button)
