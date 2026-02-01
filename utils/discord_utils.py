@@ -56,9 +56,21 @@ class TicketButton(discord.ui.Button):
         ticket_type: str,
         config: dict,
         bot: commands.Bot,
+        button_style: str = "PRIMARY",
     ):
+        # Map button style strings to discord.ButtonStyle enums
+        style_map = {
+            "PRIMARY": discord.ButtonStyle.primary,
+            "SECONDARY": discord.ButtonStyle.secondary,
+            "SUCCESS": discord.ButtonStyle.success,
+            "DANGER": discord.ButtonStyle.danger,
+        }
+        
+        # Get the style from the map, default to primary if not found
+        discord_style = style_map.get(button_style.upper(), discord.ButtonStyle.primary)
+        
         super().__init__(
-            label=button_name, custom_id=button_id, style=discord.ButtonStyle.primary
+            label=button_name, custom_id=button_id, style=discord_style
         )
         self.ticket_type = ticket_type
         self.config = config
@@ -603,13 +615,13 @@ class TicketSupportEmbedManager:
 
         # Create buttons for each ticket type
         for ticket_type, ticket_info in tickets_config.items():
-            button_config = ticket_info["button_style"]
             button = TicketButton(
                 button_name=ticket_info["button_name"],
                 button_id=ticket_info["button_id"],
                 ticket_type=ticket_type,
-                config=button_config,
+                config=self.config,
                 bot=self.bot,
+                button_style=ticket_info.get("button_style", "PRIMARY"),
             )
             view.add_item(button)
 
@@ -632,6 +644,7 @@ class TicketSupportEmbedManager:
                 ticket_type=ticket_type,
                 config=self.config,
                 bot=self.bot,
+                button_style=ticket_info.get("button_style", "PRIMARY"),
             )
             view.add_item(button)
 
