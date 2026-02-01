@@ -548,9 +548,7 @@ class CloseTicketButton(discord.ui.Button):
                                 transcript=transcript_result,
                                 closed_by=interaction.user.id,
                                 opened_by=ticket_owner_id,
-                                created_by=ticket_metadata["ticket_config"](
-                                    "created_by"
-                                ),
+                                created_by=ticket_metadata["ticket_config"]["created_by"],
                             )
                         )
                         if success_saving_in_database is None:
