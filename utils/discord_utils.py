@@ -215,11 +215,10 @@ class TicketButton(discord.ui.Button):
         dm_channel = await user.create_dm()
         answers = []
 
+        welcome_dm = self.config.get("welcome_dm")
         await dm_channel.send(
             truncate_text(
-                "📝 **Ticket Creation Process**\n"
-                "Please answer the following questions. You have 10 minutes to respond to each question. Please note the system is still a WIP, apologies for any inconvenience.\n"
-                "Type `cancel` at any time to cancel the ticket creation.",
+                welcome_dm,
                 DISCORD_MESSAGE_LIMIT
             )
         )
@@ -1011,7 +1010,7 @@ class DiscordCommands(commands.Cog):
             ephemeral=True,
         )
         
-    @app_commands(name="close_ticket")
+    @app_commands.command(name="close_ticket")
     async def close_ticket_command(self, interaction: Interaction) -> None:
         """Close the current ticket"""
         close_button = CloseTicketButton(self.bot)

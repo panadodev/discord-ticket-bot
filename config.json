@@ -7,6 +7,7 @@
             1465047875581903074
         ],
         "incoming_tickets_cat": 1466379561590849752,
+        "welcome_dm": "📝 **Ticket Creation Process**\nPlease answer the following questions, avoid long answers. You have 10 minutes to respond to each question. Please note the system is still a WIP, apologies for any inconvenience.\nType `cancel` at any time to cancel the ticket creation.",
         "orgs": {
             "willjum": {
                 "roles": {
