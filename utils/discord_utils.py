@@ -453,17 +453,6 @@ class CloseTicketButton(discord.ui.Button):
             )
             return
 
-        # Check if the person clicking is the ticket owner or has manage channels permission
-        if (
-            interaction.user.id != ticket_owner_id
-            and not interaction.user.guild_permissions.manage_channels
-        ):
-            await interaction.followup.send(
-                "❌ Only the ticket owner or staff can close this ticket.",
-                ephemeral=True,
-            )
-            return
-
         await interaction.followup.send(
             f"Ticket is being closed by {interaction.user.mention}, generating transcript...",
             ephemeral=False,
