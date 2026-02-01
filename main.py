@@ -84,7 +84,11 @@ async def on_ready():
             logger.error("main_guild_id is not set in config.json")
             return
 
-        synced = await bot.tree.sync(guild=discord.Object(id=main_guild_id))
+        # Copy commands from the cog to the guild tree
+        guild_obj = discord.Object(id=main_guild_id)
+        bot.tree.copy_global_to(guild=guild_obj)
+        
+        synced = await bot.tree.sync(guild=guild_obj)
         logger.info(f"✅ Synced {len(synced)} command(s) to guild {main_guild_id}")
 
         # Debug: Print command names
