@@ -405,7 +405,7 @@ class TicketButton(discord.ui.Button):
             ),
         )
         embed.set_thumbnail(url=user.display_avatar.url)
-        embed.set_footer(text=truncate_text(f"{self.ticket_type}-{source_org} (User !r to reply)", DISCORD_EMBED_TITLE_LIMIT))
+        embed.set_footer(text=truncate_text(f"{self.ticket_type}-{source_org} (Use !r to reply)", DISCORD_EMBED_TITLE_LIMIT))
 
         # Add questions and answers
         questions = ticket_config.get("questions", [])
