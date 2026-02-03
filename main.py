@@ -15,15 +15,15 @@ from sentry_sdk.integrations.logging import EventHandler
 from tortoise import Tortoise
 
 from utils.discord_utils import (
-    CloseTicketButton,
-    DiscordCommands,
-    TicketSupportEmbedManager,
-    truncate_text,
     DISCORD_EMBED_DESCRIPTION_LIMIT,
     DISCORD_EMBED_FIELD_NAME_LIMIT,
     DISCORD_EMBED_FIELD_VALUE_LIMIT,
     DISCORD_EMBED_TITLE_LIMIT,
     DISCORD_MESSAGE_LIMIT,
+    CloseTicketButton,
+    DiscordCommands,
+    TicketSupportEmbedManager,
+    truncate_text,
 )
 
 # Load environment variables
@@ -87,7 +87,7 @@ async def on_ready():
         # Copy commands from the cog to the guild tree
         guild_obj = discord.Object(id=main_guild_id)
         bot.tree.copy_global_to(guild=guild_obj)
-        
+
         synced = await bot.tree.sync(guild=guild_obj)
         logger.info(f"✅ Synced {len(synced)} command(s) to guild {main_guild_id}")
 
@@ -186,11 +186,15 @@ async def on_message(message: discord.Message):
         # Forward the message to the ticket channel
         try:
             embed = discord.Embed(
-                description=truncate_text(message.content, DISCORD_EMBED_DESCRIPTION_LIMIT),
+                description=truncate_text(
+                    message.content, DISCORD_EMBED_DESCRIPTION_LIMIT
+                ),
                 color=discord.Color.blue(),
             )
             embed.set_author(
-                name=truncate_text(message.author.global_name, DISCORD_EMBED_TITLE_LIMIT),
+                name=truncate_text(
+                    message.author.global_name, DISCORD_EMBED_TITLE_LIMIT
+                ),
                 icon_url=message.author.display_avatar.url,
             )
 
@@ -232,8 +236,13 @@ async def on_message(message: discord.Message):
                     # Validate file size
                     if attachment.size > MAX_FILE_SIZE:
                         embed.add_field(
-                            name=truncate_text("Attachment (Too Large)", DISCORD_EMBED_FIELD_NAME_LIMIT),
-                            value=truncate_text(f"[{attachment.filename}]({attachment.url}) - File exceeds 25 MB limit", DISCORD_EMBED_FIELD_VALUE_LIMIT),
+                            name=truncate_text(
+                                "Attachment (Too Large)", DISCORD_EMBED_FIELD_NAME_LIMIT
+                            ),
+                            value=truncate_text(
+                                f"[{attachment.filename}]({attachment.url}) - File exceeds 25 MB limit",
+                                DISCORD_EMBED_FIELD_VALUE_LIMIT,
+                            ),
                             inline=False,
                         )
                         logger.warning(
@@ -249,8 +258,13 @@ async def on_message(message: discord.Message):
                     )
                     if file_ext not in ALLOWED_EXTENSIONS:
                         embed.add_field(
-                            name=truncate_text("Attachment (Blocked)", DISCORD_EMBED_FIELD_NAME_LIMIT),
-                            value=truncate_text(f"[{attachment.filename}]({attachment.url}) - File type not allowed", DISCORD_EMBED_FIELD_VALUE_LIMIT),
+                            name=truncate_text(
+                                "Attachment (Blocked)", DISCORD_EMBED_FIELD_NAME_LIMIT
+                            ),
+                            value=truncate_text(
+                                f"[{attachment.filename}]({attachment.url}) - File type not allowed",
+                                DISCORD_EMBED_FIELD_VALUE_LIMIT,
+                            ),
                             inline=False,
                         )
                         logger.warning(
@@ -259,8 +273,13 @@ async def on_message(message: discord.Message):
                         continue
 
                     embed.add_field(
-                        name=truncate_text("Attachment", DISCORD_EMBED_FIELD_NAME_LIMIT),
-                        value=truncate_text(f"[{attachment.filename}]({attachment.url})", DISCORD_EMBED_FIELD_VALUE_LIMIT),
+                        name=truncate_text(
+                            "Attachment", DISCORD_EMBED_FIELD_NAME_LIMIT
+                        ),
+                        value=truncate_text(
+                            f"[{attachment.filename}]({attachment.url})",
+                            DISCORD_EMBED_FIELD_VALUE_LIMIT,
+                        ),
                         inline=False,
                     )
                     # Download and prepare file for forwarding
@@ -329,7 +348,9 @@ async def on_message(message: discord.Message):
             ticket_color = ticket_metadata.get("color") if ticket_metadata else None
 
             embed = discord.Embed(
-                description=truncate_text(message_content, DISCORD_EMBED_DESCRIPTION_LIMIT),
+                description=truncate_text(
+                    message_content, DISCORD_EMBED_DESCRIPTION_LIMIT
+                ),
                 color=(
                     discord.Color.green()
                     if not ticket_color
@@ -338,10 +359,14 @@ async def on_message(message: discord.Message):
             )
 
             if is_anonymous:
-                embed.set_author(name=truncate_text("Staff Member", DISCORD_EMBED_TITLE_LIMIT))
+                embed.set_author(
+                    name=truncate_text("Staff Member", DISCORD_EMBED_TITLE_LIMIT)
+                )
             else:
                 embed.set_author(
-                    name=truncate_text(message.author.global_name, DISCORD_EMBED_TITLE_LIMIT),
+                    name=truncate_text(
+                        message.author.global_name, DISCORD_EMBED_TITLE_LIMIT
+                    ),
                     icon_url=message.author.display_avatar.url,
                 )
 
@@ -350,8 +375,13 @@ async def on_message(message: discord.Message):
             if message.attachments:
                 for attachment in message.attachments:
                     embed.add_field(
-                        name=truncate_text("Attachment", DISCORD_EMBED_FIELD_NAME_LIMIT),
-                        value=truncate_text(f"[{attachment.filename}]({attachment.url})", DISCORD_EMBED_FIELD_VALUE_LIMIT),
+                        name=truncate_text(
+                            "Attachment", DISCORD_EMBED_FIELD_NAME_LIMIT
+                        ),
+                        value=truncate_text(
+                            f"[{attachment.filename}]({attachment.url})",
+                            DISCORD_EMBED_FIELD_VALUE_LIMIT,
+                        ),
                         inline=False,
                     )
                     # Download and prepare file for forwarding
@@ -381,7 +411,10 @@ async def on_message(message: discord.Message):
 
             if is_anonymous:
                 embed.set_author(
-                    name=truncate_text(f"{message.author.global_name} (hidden)", DISCORD_EMBED_TITLE_LIMIT),
+                    name=truncate_text(
+                        f"{message.author.global_name} (hidden)",
+                        DISCORD_EMBED_TITLE_LIMIT,
+                    ),
                     icon_url=message.author.display_avatar.url,
                 )
             await message.channel.send(embed=embed)

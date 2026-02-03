@@ -18,14 +18,14 @@
                     "support": 868672414693875744,
                     "management": 868661502108925993
                 },
-                "guild": 123
+                "guild": 798932514324217888
             },
             "sanc": {
                 "roles": {
                     "support": 1466380422102384673,
                     "management": 868661502108925993
                 },
-                "guild": 123
+                "guild": 621739404154634240
             },
             "tickets": {
                 "support": {
@@ -37,6 +37,7 @@
                     "ticket_channel_icon": "🟣",
                     "embed_color": "#8000ff",
                     "has_perms": [
+                        "management",
                         "support",
                         "trial_admin",
                         "trainee_admin",
@@ -57,6 +58,7 @@
                     "ticket_channel_icon": "🟢",
                     "embed_color": "#00ff00",
                     "has_perms": [
+                        "management",
                         "trial_admin",
                         "trainee_admin",
                         "admin",
@@ -76,6 +78,7 @@
                     "ticket_channel_icon": "🔴",
                     "embed_color": "#ff0000",
                     "has_perms": [
+                        "management",
                         "senior_admin"
                     ],
                     "questions": [
@@ -92,6 +95,7 @@
                     "ticket_channel_icon": "🟠",
                     "embed_color": "#ff8000",
                     "has_perms": [
+                        "management",
                         "admin",
                         "senior_admin",
                         "support"
