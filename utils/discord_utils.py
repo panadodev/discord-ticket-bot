@@ -398,7 +398,7 @@ class TicketButton(discord.ui.Button):
 
         # Create summary embed
         embed = discord.Embed(
-            title=truncate_text(ticket_config[f'{source_org} button_name'], DISCORD_EMBED_TITLE_LIMIT),
+            title=truncate_text(guild_clean + ticket_config['button_name'], DISCORD_EMBED_TITLE_LIMIT),
             description=truncate_text(f"{user.mention}", DISCORD_EMBED_DESCRIPTION_LIMIT),
             color=discord.Color(
                 int(ticket_config.get("embed_color", "#ffffff").lstrip("#"), 16)
@@ -1021,7 +1021,7 @@ class DiscordCommands(commands.Cog):
     @app_commands.command(name="average_ticket_duration")
     async def average_ticket_duration(self, interaction: Interaction) -> None:
         """Get the average ticket duration for the current year"""
-        await interaction.response.defer()
+        await interaction.response.defer(ephemeral=True)
 
         if not self.config:
             await interaction.followup.send(
@@ -1037,6 +1037,15 @@ class DiscordCommands(commands.Cog):
                 "❌ This command can only be used in the main server.", ephemeral=True
             )
             return
+        # check user is management
+        management_role_id = self.config.get("management_role_id")
+        if management_role_id:
+            management_role = interaction.guild.get_role(management_role_id)
+            if management_role not in interaction.user.roles:
+                await interaction.followup.send(
+                    "❌ You do not have permission to use this command.", ephemeral=True
+                )
+                return
 
         main_guild_id = self.config.get("main_guild_id")
         if not main_guild_id:
@@ -1047,22 +1056,54 @@ class DiscordCommands(commands.Cog):
             return
 
         try:
-            avg_duration = await DatabaseOperations.average_ticket_duration(main_guild_id)
-            if avg_duration is None:
+            avg_duration = await DatabaseOperations.average_respond_times()
+            if avg_duration is None or not avg_duration:
                 await interaction.followup.send(
-                    "❌ Failed to calculate average ticket duration.", ephemeral=True
+                    "❌ Failed to calculate average ticket duration or no tickets found.", ephemeral=True
                 )
                 logger.error("Failed to calculate average ticket duration")
                 return
 
-            hours, remainder = divmod(avg_duration, 3600)
-            minutes, seconds = divmod(remainder, 60)
-            formatted_duration = f"{int(hours)}h {int(minutes)}m {int(seconds)}s"
-
-            await interaction.followup.send(
-                f"The average ticket duration this year is: **{formatted_duration}**",
-                ephemeral=True,
-            )
+            # Create an embed for each organization
+            for org_id, ticket_types in avg_duration.items():
+                # Try to get the guild name, fallback to ID if not found
+                guild = self.bot.get_guild(org_id)
+                org_name = guild.name if guild else f"Guild ID: {org_id}"
+                
+                embed = discord.Embed(
+                    title=truncate_text(f"📊 Average Ticket Duration - {org_name}", DISCORD_EMBED_TITLE_LIMIT),
+                    description=truncate_text("Average response times by ticket type", DISCORD_EMBED_DESCRIPTION_LIMIT),
+                    color=discord.Color.blue(),
+                )
+                
+                # Add a field for each ticket type
+                for ticket_type, stats in ticket_types.items():
+                    avg_seconds = stats["average_response_time"]
+                    ticket_count = stats["ticket_count"]
+                    
+                    # Convert seconds to a human-readable format
+                    hours = int(avg_seconds // 3600)
+                    minutes = int((avg_seconds % 3600) // 60)
+                    seconds = int(avg_seconds % 60)
+                    
+                    if hours > 0:
+                        formatted_time = f"{hours}h {minutes}m {seconds}s"
+                    elif minutes > 0:
+                        formatted_time = f"{minutes}m {seconds}s"
+                    else:
+                        formatted_time = f"{seconds}s"
+                    
+                    field_value = f"⏱️ **{formatted_time}**\n📋 Tickets: {ticket_count}"
+                    
+                    embed.add_field(
+                        name=truncate_text(ticket_type.replace("_", " ").title(), DISCORD_EMBED_FIELD_NAME_LIMIT),
+                        value=truncate_text(field_value, DISCORD_EMBED_FIELD_VALUE_LIMIT),
+                        inline=True
+                    )
+                
+                # Send the embed for this organization
+                await interaction.followup.send(embed=embed, ephemeral=True)
+                
         except Exception as e:
             logger.error(f"Error calculating average ticket duration: {e}", exc_info=True)
             await interaction.followup.send(
