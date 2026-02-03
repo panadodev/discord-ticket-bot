@@ -98,11 +98,11 @@ class DatabaseOperations:
         },
         """
         results = {}
-        orgs = await tickets.all().values_list("origin_org_guild", flat=True).distinct()
+        orgs = await tickets.all().distinct().values_list("origin_org_guild", flat=True)
         
         for org in orgs:
             results[org] = {}
-            ticket_types = await tickets.filter(origin_org_guild=org).values_list("ticket_type", flat=True).distinct()
+            ticket_types = await tickets.filter(origin_org_guild=org).distinct().values_list("ticket_type", flat=True)
             
             for t_type in ticket_types:
                 response_times = await tickets.filter(
