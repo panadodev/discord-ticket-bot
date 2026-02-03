@@ -62,7 +62,7 @@ class DatabaseOperations:
         return success
 
     @staticmethod
-    async def tickets_handled_this_year(origin_org_guild: int):
+    async def tickets_handled_this_year():
         current_year = time.gmtime().tm_year
         start_of_year = int(
             time.mktime(time.strptime(f"{current_year}-01-01", "%Y-%m-%d"))
@@ -72,7 +72,6 @@ class DatabaseOperations:
         )
 
         count = await tickets.filter(
-            origin_org_guild=origin_org_guild,
             created__gte=start_of_year,
             created__lte=end_of_year,
         ).count()
