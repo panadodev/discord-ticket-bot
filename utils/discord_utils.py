@@ -602,9 +602,7 @@ class CloseTicketButton(discord.ui.Button):
 
         # Update bot status with current ticket count
         try:
-            count = await DatabaseOperations.tickets_handled_this_year(
-                origin_org_guild=guild_id
-            )
+            count = await DatabaseOperations.tickets_handled_this_year()
             await self.bot.change_presence(
                 activity=discord.Activity(
                     type=discord.ActivityType.watching,
