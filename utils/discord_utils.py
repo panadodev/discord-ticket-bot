@@ -572,6 +572,7 @@ class CloseTicketButton(discord.ui.Button):
                                 transcript=transcript_result,
                                 closed_by=interaction.user.id,
                                 opened_by=ticket_owner_id,
+                                made_at=ticket_metadata["ticket_config"]["created_at"],
                                 created_by=ticket_metadata["ticket_config"]["created_by"],
                             )
                         )
@@ -1015,3 +1016,56 @@ class DiscordCommands(commands.Cog):
         """Close the current ticket"""
         close_button = CloseTicketButton(self.bot)
         await close_button.callback(interaction)
+        
+        
+    @app_commands.command(name="average_ticket_duration")
+    async def average_ticket_duration(self, interaction: Interaction) -> None:
+        """Get the average ticket duration for the current year"""
+        await interaction.response.defer()
+
+        if not self.config:
+            await interaction.followup.send(
+                "❌ Configuration not loaded. Please contact an administrator.",
+                ephemeral=True,
+            )
+            logger.error("Config not loaded in average_ticket_duration")
+            return
+        
+        # check if management
+        if not interaction.guild or interaction.guild.id != self.config.get("main_guild_id"):
+            await interaction.followup.send(
+                "❌ This command can only be used in the main server.", ephemeral=True
+            )
+            return
+
+        main_guild_id = self.config.get("main_guild_id")
+        if not main_guild_id:
+            await interaction.followup.send(
+                "❌ Main guild ID not configured.", ephemeral=True
+            )
+            logger.error("Main guild ID not configured in config.json")
+            return
+
+        try:
+            avg_duration = await DatabaseOperations.average_ticket_duration(main_guild_id)
+            if avg_duration is None:
+                await interaction.followup.send(
+                    "❌ Failed to calculate average ticket duration.", ephemeral=True
+                )
+                logger.error("Failed to calculate average ticket duration")
+                return
+
+            hours, remainder = divmod(avg_duration, 3600)
+            minutes, seconds = divmod(remainder, 60)
+            formatted_duration = f"{int(hours)}h {int(minutes)}m {int(seconds)}s"
+
+            await interaction.followup.send(
+                f"The average ticket duration this year is: **{formatted_duration}**",
+                ephemeral=True,
+            )
+        except Exception as e:
+            logger.error(f"Error calculating average ticket duration: {e}", exc_info=True)
+            await interaction.followup.send(
+                "❌ An error occurred while calculating average ticket duration.",
+                ephemeral=True,
+            )

@@ -27,6 +27,7 @@ class tickets(Model):
     opened_by = fields.BigIntField(null=False)
     created_by = fields.BigIntField(null=False)
 
+    made_at = fields.IntField(null=False)
     created = fields.IntField(null=False)
 
 
@@ -40,6 +41,7 @@ class DatabaseOperations:
         transcript: str,
         closed_by: int,
         opened_by: int,
+        made_at: int,
         created_by: int,
     ):
         success = await tickets.create(
@@ -49,6 +51,7 @@ class DatabaseOperations:
             closed_by=closed_by,
             opened_by=opened_by,
             created_by=created_by,
+            made_at=made_at,
             created=int(time.time()),
         )
         if success:
@@ -75,3 +78,47 @@ class DatabaseOperations:
         ).count()
 
         return count
+    
+    
+    @staticmethod
+    async def average_respond_times():
+        """
+        {"org_a": {
+        "ticket_type_a": {
+            "average_response_time": 123,
+            "ticket_count": 10
+            },
+        "ticket_type_b": {
+            "average_response_time": 456,
+            "ticket_count": 5
+            }
+            },
+        "org_b": {
+        
+        },
+        """
+        results = {}
+        orgs = await tickets.all().values_list("origin_org_guild", flat=True).distinct()
+        
+        for org in orgs:
+            results[org] = {}
+            ticket_types = await tickets.filter(origin_org_guild=org).values_list("ticket_type", flat=True).distinct()
+            
+            for t_type in ticket_types:
+                response_times = await tickets.filter(
+                    origin_org_guild=org,
+                    ticket_type=t_type
+                ).values_list("created", "made_at")
+                
+                total_response_time = sum(created - made_at for created, made_at in response_times)
+                ticket_count = len(response_times)
+                
+                average_response_time = total_response_time / ticket_count if ticket_count > 0 else 0
+                
+                results[org][t_type] = {
+                    "average_response_time": average_response_time,
+                    "ticket_count": ticket_count
+                }
+        
+        return results
+        
