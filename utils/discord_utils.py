@@ -32,7 +32,7 @@ def truncate_text(text: str, max_length: int, suffix: str = "...") -> str:
     text = str(text)
     if len(text) <= max_length:
         return text
-    return text[:max_length - len(suffix)] + suffix
+    return text[: max_length - len(suffix)] + suffix
 
 
 def load_config() -> Optional[dict]:
@@ -82,13 +82,11 @@ class TicketButton(discord.ui.Button):
             "SUCCESS": discord.ButtonStyle.success,
             "DANGER": discord.ButtonStyle.danger,
         }
-        
+
         # Get the style from the map, default to primary if not found
         discord_style = style_map.get(button_style.upper(), discord.ButtonStyle.primary)
-        
-        super().__init__(
-            label=button_name, custom_id=button_id, style=discord_style
-        )
+
+        super().__init__(label=button_name, custom_id=button_id, style=discord_style)
         self.ticket_type = ticket_type
         self.config = config
         self.bot = bot
@@ -216,16 +214,13 @@ class TicketButton(discord.ui.Button):
         answers = []
 
         welcome_dm = self.config.get("welcome_dm")
-        await dm_channel.send(
-            truncate_text(
-                welcome_dm,
-                DISCORD_MESSAGE_LIMIT
-            )
-        )
+        await dm_channel.send(truncate_text(welcome_dm, DISCORD_MESSAGE_LIMIT))
 
         for i, question in enumerate(questions, 1):
             embed = discord.Embed(
-                title=truncate_text(f"Question {i}/{len(questions)}", DISCORD_EMBED_TITLE_LIMIT),
+                title=truncate_text(
+                    f"Question {i}/{len(questions)}", DISCORD_EMBED_TITLE_LIMIT
+                ),
                 description=truncate_text(question, DISCORD_EMBED_DESCRIPTION_LIMIT),
                 color=discord.Color.blue(),
             )
@@ -246,9 +241,11 @@ class TicketButton(discord.ui.Button):
                     return None
 
                 # Truncate answer to fit Discord limits (will be used in embed field)
-                truncated_answer = truncate_text(message.content, DISCORD_EMBED_FIELD_VALUE_LIMIT)
+                truncated_answer = truncate_text(
+                    message.content, DISCORD_EMBED_FIELD_VALUE_LIMIT
+                )
                 answers.append(truncated_answer)
-                
+
                 # Notify user if their answer was truncated
                 if len(message.content) > DISCORD_EMBED_FIELD_VALUE_LIMIT:
                     await dm_channel.send(
@@ -330,24 +327,43 @@ class TicketButton(discord.ui.Button):
             ),
         }
 
-        # Add permissions for viewable roles
+        # Add permissions for viewable roles - only from source guild's organization
         orgs_config = self.config.get("orgs", {})
-        for role_key in ticket_config.get("has_perms", []):
-            # Search for the role in all orgs
-            role_id = None
-            for org_name, org_data in orgs_config.items():
-                if org_name == "tickets":
-                    continue
-                if "roles" in org_data and role_key in org_data["roles"]:
-                    role_id = org_data["roles"][role_key]
-                    break
 
-            if role_id:
-                role = guild.get_role(role_id)
-                if role:
+        # Find which org this guild belongs to
+        source_org_data = None
+        for org_name, org_data in orgs_config.items():
+            if org_name == "tickets":
+                continue
+            if org_data.get("guild") == source_org_id:
+                source_org_data = org_data
+                break
+
+        designated_role = ticket_config.get("designated")
+        source_org_roles = source_org_data.get("roles", {}) if source_org_data else {}
+
+        for role_key in ticket_config.get("has_perms", []):
+            # Only process roles that exist in the source guild's organization
+            if role_key not in source_org_roles:
+                logger.debug(
+                    f"Skipping role '{role_key}' - not defined in source guild's organization"
+                )
+                continue
+
+            role_id = source_org_roles[role_key]
+            role = guild.get_role(role_id)
+            if role:
+                # Designated role gets full permissions, others get read-only
+                if role_key == designated_role:
                     overwrites[role] = discord.PermissionOverwrite(
                         read_messages=True,
                         send_messages=True,
+                        read_message_history=True,
+                    )
+                else:
+                    overwrites[role] = discord.PermissionOverwrite(
+                        read_messages=True,
+                        send_messages=False,
                         read_message_history=True,
                     )
 
@@ -388,22 +404,31 @@ class TicketButton(discord.ui.Button):
 
         # Create summary embed
         embed = discord.Embed(
-            title=truncate_text(guild_clean + ticket_config['button_name'], DISCORD_EMBED_TITLE_LIMIT),
-            description=truncate_text(f"{user.mention}", DISCORD_EMBED_DESCRIPTION_LIMIT),
+            title=truncate_text(
+                guild_clean + ticket_config["button_name"], DISCORD_EMBED_TITLE_LIMIT
+            ),
+            description=truncate_text(
+                f"{user.mention}", DISCORD_EMBED_DESCRIPTION_LIMIT
+            ),
             color=discord.Color(
                 int(ticket_config.get("embed_color", "#ffffff").lstrip("#"), 16)
             ),
         )
         embed.set_thumbnail(url=user.display_avatar.url)
-        embed.set_footer(text=truncate_text(f"{self.ticket_type}-{source_org} (Use !r to reply)", DISCORD_EMBED_TITLE_LIMIT))
+        embed.set_footer(
+            text=truncate_text(
+                f"{self.ticket_type}-{source_org} (Use !r to reply)",
+                DISCORD_EMBED_TITLE_LIMIT,
+            )
+        )
 
         # Add questions and answers
         questions = ticket_config.get("questions", [])
         for i, (question, answer) in enumerate(zip(questions, answers), 1):
             embed.add_field(
-                name=truncate_text(question, DISCORD_EMBED_FIELD_NAME_LIMIT), 
-                value=truncate_text(answer, DISCORD_EMBED_FIELD_VALUE_LIMIT), 
-                inline=False
+                name=truncate_text(question, DISCORD_EMBED_FIELD_NAME_LIMIT),
+                value=truncate_text(answer, DISCORD_EMBED_FIELD_VALUE_LIMIT),
+                inline=False,
             )
 
         # Create close button view
@@ -540,7 +565,7 @@ class CloseTicketButton(discord.ui.Button):
 
                         log_message = truncate_text(
                             f"<t:{now}:R> {channel_name} \n Duration: {round(ticket_duration, 2)} hours.",
-                            DISCORD_MESSAGE_LIMIT
+                            DISCORD_MESSAGE_LIMIT,
                         )
                         await log_ch.send(
                             content=log_message,
@@ -563,7 +588,9 @@ class CloseTicketButton(discord.ui.Button):
                                 closed_by=interaction.user.id,
                                 opened_by=ticket_owner_id,
                                 made_at=ticket_metadata["ticket_config"]["created_at"],
-                                created_by=ticket_metadata["ticket_config"]["created_by"],
+                                created_by=ticket_metadata["ticket_config"][
+                                    "created_by"
+                                ],
                             )
                         )
                         if success_saving_in_database is None:
@@ -616,7 +643,9 @@ class TicketSupportEmbedManager:
 
         embed = discord.Embed(
             title=truncate_text("Ticket Support", DISCORD_EMBED_TITLE_LIMIT),
-            description=truncate_text("Press the buttons below for support.", DISCORD_EMBED_DESCRIPTION_LIMIT),
+            description=truncate_text(
+                "Press the buttons below for support.", DISCORD_EMBED_DESCRIPTION_LIMIT
+            ),
             color=discord.Color.blue(),
         )
 
@@ -693,7 +722,7 @@ class TicketTypeSelect(discord.ui.Select):
                 discord.SelectOption(
                     label=ticket_info["button_name"],
                     value=ticket_type,
-                    description=f"Assign to {ticket_type}",
+                    description=f"Assign to {ticket_info['designated']} team",
                     emoji=ticket_info.get("ticket_channel_icon", "🎫"),
                 )
             )
@@ -780,22 +809,52 @@ class TicketTypeSelect(discord.ui.Select):
                             read_messages=False
                         )
 
-        # Add permissions for viewable roles
-        for role_key in ticket_config.get("has_perms", []):
-            role_id = None
-            for org_name, org_data in orgs_config.items():
-                if org_name == "tickets":
-                    continue
-                if "roles" in org_data and role_key in org_data["roles"]:
-                    role_id = org_data["roles"][role_key]
-                    break
+        # Add permissions for viewable roles - only from source guild's organization
+        # Need to get the source guild's org ID from the channel metadata
+        source_guild_id = None
+        if channel.topic and channel.topic.startswith("{"):
+            try:
+                metadata = json.loads(channel.topic)
+                source_guild_id = metadata.get("ticket_config", {}).get(
+                    "ticket_from_guild"
+                )
+            except json.JSONDecodeError:
+                logger.warning("Could not parse ticket metadata from channel topic")
 
-            if role_id:
-                role = guild.get_role(role_id)
-                if role:
+        # Find which org this source guild belongs to
+        source_org_data = None
+        for org_name, org_data in orgs_config.items():
+            if org_name == "tickets":
+                continue
+            if source_guild_id and org_data.get("guild") == source_guild_id:
+                source_org_data = org_data
+                break
+
+        designated_role = ticket_config.get("designated")
+        source_org_roles = source_org_data.get("roles", {}) if source_org_data else {}
+
+        for role_key in ticket_config.get("has_perms", []):
+            # Only process roles that exist in the source guild's organization
+            if role_key not in source_org_roles:
+                logger.debug(
+                    f"Skipping role '{role_key}' - not defined in source guild's organization"
+                )
+                continue
+
+            role_id = source_org_roles[role_key]
+            role = guild.get_role(role_id)
+            if role:
+                # Designated role gets full permissions, others get read-only
+                if role_key == designated_role:
                     overwrites[role] = discord.PermissionOverwrite(
                         read_messages=True,
                         send_messages=True,
+                        read_message_history=True,
+                    )
+                else:
+                    overwrites[role] = discord.PermissionOverwrite(
+                        read_messages=True,
+                        send_messages=False,
                         read_message_history=True,
                     )
 
@@ -868,7 +927,10 @@ class TicketTypeSelect(discord.ui.Select):
         # Send confirmation message
         embed = discord.Embed(
             title=truncate_text("✅ Ticket Reassigned", DISCORD_EMBED_TITLE_LIMIT),
-            description=truncate_text(f"This ticket has been reassigned to **{selected_type}** team by {interaction.user.mention}", DISCORD_EMBED_DESCRIPTION_LIMIT),
+            description=truncate_text(
+                f"This ticket has been reassigned to **{selected_type}** team by {interaction.user.mention}",
+                DISCORD_EMBED_DESCRIPTION_LIMIT,
+            ),
             color=discord.Color(
                 int(ticket_config.get("embed_color", "#ffffff").lstrip("#"), 16)
             ),
@@ -989,14 +1051,13 @@ class DiscordCommands(commands.Cog):
             view=view,
             ephemeral=True,
         )
-        
+
     @app_commands.command(name="close_ticket")
     async def close_ticket_command(self, interaction: Interaction) -> None:
         """Close the current ticket"""
         close_button = CloseTicketButton(self.bot)
         await close_button.callback(interaction)
-        
-        
+
     @app_commands.command(name="average_ticket_duration")
     async def average_ticket_duration(self, interaction: Interaction) -> None:
         """Get the average ticket duration for the current year"""
@@ -1009,9 +1070,11 @@ class DiscordCommands(commands.Cog):
             )
             logger.error("Config not loaded in average_ticket_duration")
             return
-        
+
         # check if management
-        if not interaction.guild or interaction.guild.id != self.config.get("main_guild_id"):
+        if not interaction.guild or interaction.guild.id != self.config.get(
+            "main_guild_id"
+        ):
             await interaction.followup.send(
                 "❌ This command can only be used in the main server.", ephemeral=True
             )
@@ -1038,7 +1101,8 @@ class DiscordCommands(commands.Cog):
             avg_duration = await DatabaseOperations.average_respond_times()
             if avg_duration is None or not avg_duration:
                 await interaction.followup.send(
-                    "❌ Failed to calculate average ticket duration or no tickets found.", ephemeral=True
+                    "❌ Failed to calculate average ticket duration or no tickets found.",
+                    ephemeral=True,
                 )
                 logger.error("Failed to calculate average ticket duration")
                 return
@@ -1048,43 +1112,56 @@ class DiscordCommands(commands.Cog):
                 # Try to get the guild name, fallback to ID if not found
                 guild = self.bot.get_guild(org_id)
                 org_name = guild.name if guild else f"Guild ID: {org_id}"
-                
+
                 embed = discord.Embed(
-                    title=truncate_text(f"📊 Average Ticket Duration - {org_name}", DISCORD_EMBED_TITLE_LIMIT),
-                    description=truncate_text("Average response times by ticket type", DISCORD_EMBED_DESCRIPTION_LIMIT),
+                    title=truncate_text(
+                        f"📊 Average Ticket Duration - {org_name}",
+                        DISCORD_EMBED_TITLE_LIMIT,
+                    ),
+                    description=truncate_text(
+                        "Average response times by ticket type",
+                        DISCORD_EMBED_DESCRIPTION_LIMIT,
+                    ),
                     color=discord.Color.blue(),
                 )
-                
+
                 # Add a field for each ticket type
                 for ticket_type, stats in ticket_types.items():
                     avg_seconds = stats["average_response_time"]
                     ticket_count = stats["ticket_count"]
-                    
+
                     # Convert seconds to a human-readable format
                     hours = int(avg_seconds // 3600)
                     minutes = int((avg_seconds % 3600) // 60)
                     seconds = int(avg_seconds % 60)
-                    
+
                     if hours > 0:
                         formatted_time = f"{hours}h {minutes}m {seconds}s"
                     elif minutes > 0:
                         formatted_time = f"{minutes}m {seconds}s"
                     else:
                         formatted_time = f"{seconds}s"
-                    
+
                     field_value = f"⏱️ **{formatted_time}**\n📋 Tickets: {ticket_count}"
-                    
+
                     embed.add_field(
-                        name=truncate_text(ticket_type.replace("_", " ").title(), DISCORD_EMBED_FIELD_NAME_LIMIT),
-                        value=truncate_text(field_value, DISCORD_EMBED_FIELD_VALUE_LIMIT),
-                        inline=True
+                        name=truncate_text(
+                            ticket_type.replace("_", " ").title(),
+                            DISCORD_EMBED_FIELD_NAME_LIMIT,
+                        ),
+                        value=truncate_text(
+                            field_value, DISCORD_EMBED_FIELD_VALUE_LIMIT
+                        ),
+                        inline=True,
                     )
-                
+
                 # Send the embed for this organization
                 await interaction.followup.send(embed=embed, ephemeral=True)
-                
+
         except Exception as e:
-            logger.error(f"Error calculating average ticket duration: {e}", exc_info=True)
+            logger.error(
+                f"Error calculating average ticket duration: {e}", exc_info=True
+            )
             await interaction.followup.send(
                 "❌ An error occurred while calculating average ticket duration.",
                 ephemeral=True,
