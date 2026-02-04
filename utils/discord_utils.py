@@ -332,7 +332,6 @@ class TicketButton(discord.ui.Button):
 
         # Add permissions for viewable roles
         orgs_config = self.config.get("orgs", {})
-        designated_role = ticket_config.get("designated")
         for role_key in ticket_config.get("has_perms", []):
             # Search for the role in all orgs
             role_id = None
@@ -346,19 +345,11 @@ class TicketButton(discord.ui.Button):
             if role_id:
                 role = guild.get_role(role_id)
                 if role:
-                    # Designated role gets full permissions, others get read-only
-                    if role_key == designated_role:
-                        overwrites[role] = discord.PermissionOverwrite(
-                            read_messages=True,
-                            send_messages=True,
-                            read_message_history=True,
-                        )
-                    else:
-                        overwrites[role] = discord.PermissionOverwrite(
-                            read_messages=True,
-                            send_messages=False,
-                            read_message_history=True,
-                        )
+                    overwrites[role] = discord.PermissionOverwrite(
+                        read_messages=True,
+                        send_messages=True,
+                        read_message_history=True,
+                    )
 
         button_name = ticket_config.get("button_name", "Unknown Ticket")
         button_id = ticket_config.get("button_id", "unknown_ticket")
@@ -702,7 +693,7 @@ class TicketTypeSelect(discord.ui.Select):
                 discord.SelectOption(
                     label=ticket_info["button_name"],
                     value=ticket_type,
-                    description=f"Assign to {ticket_info['designated']} team",
+                    description=f"Assign to {ticket_type}",
                     emoji=ticket_info.get("ticket_channel_icon", "🎫"),
                 )
             )
@@ -790,7 +781,6 @@ class TicketTypeSelect(discord.ui.Select):
                         )
 
         # Add permissions for viewable roles
-        designated_role = ticket_config.get("designated")
         for role_key in ticket_config.get("has_perms", []):
             role_id = None
             for org_name, org_data in orgs_config.items():
@@ -803,19 +793,11 @@ class TicketTypeSelect(discord.ui.Select):
             if role_id:
                 role = guild.get_role(role_id)
                 if role:
-                    # Designated role gets full permissions, others get read-only
-                    if role_key == designated_role:
-                        overwrites[role] = discord.PermissionOverwrite(
-                            read_messages=True,
-                            send_messages=True,
-                            read_message_history=True,
-                        )
-                    else:
-                        overwrites[role] = discord.PermissionOverwrite(
-                            read_messages=True,
-                            send_messages=False,
-                            read_message_history=True,
-                        )
+                    overwrites[role] = discord.PermissionOverwrite(
+                        read_messages=True,
+                        send_messages=True,
+                        read_message_history=True,
+                    )
 
         # Update channel permissions
         try:

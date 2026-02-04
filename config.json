@@ -33,7 +33,6 @@
                     "button_name": "Support Ticket",
                     "button_id": "support_ticket",
                     "button_style": "SUCCESS",
-                    "designated": "support",
                     "ticket_channel_icon": "🟣",
                     "embed_color": "#8000ff",
                     "has_perms": [
@@ -53,7 +52,6 @@
                     "button_name": "Player Report",
                     "button_id": "player_report",
                     "button_style": "DANGER",
-                    "designated": "admin",
                     "ticket_channel_icon": "🟢",
                     "embed_color": "#00ff00",
                     "has_perms": [
@@ -72,7 +70,6 @@
                     "button_name": "Ban Appeal",
                     "button_id": "ban_appeal",
                     "button_style": "PRIMARY",
-                    "designated": "senior_admin",
                     "ticket_channel_icon": "🔴",
                     "embed_color": "#ff0000",
                     "has_perms": [
@@ -88,7 +85,6 @@
                     "button_name": "Mute Appeal",
                     "button_id": "mute_appeal",
                     "button_style": "PRIMARY",
-                    "designated": "support",
                     "ticket_channel_icon": "🟠",
                     "embed_color": "#ff8000",
                     "has_perms": [
@@ -105,7 +101,6 @@
                     "log_channel": 1033378546015543296,
                     "button_name": "Staff Application",
                     "button_id": "staff_application",
-                    "designated": "management",
                     "button_style": "PRIMARY",
                     "ticket_channel_icon": "🔵",
                     "embed_color": "#0000ff",
@@ -124,7 +119,6 @@
                     "log_channel": 1033378515816550512,
                     "button_name": "VIP Related",
                     "button_id": "vip_related",
-                    "designated": "management",
                     "button_style": "PRIMARY",
                     "ticket_channel_icon": "⚪",
                     "embed_color": "#ffff00",
