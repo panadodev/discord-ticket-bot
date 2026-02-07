@@ -503,11 +503,31 @@ class CloseTicketButton(discord.ui.Button):
             )
             return
 
+        channel_topic = interaction.channel.topic
+        if not channel_topic or not channel_topic.startswith("{"):
+            await interaction.followup.send(
+                "❌ This channel does not have valid ticket metadata. Cannot close ticket.",
+                ephemeral=True,
+            )
+            logger.error(
+                f"Channel {channel.name} is missing valid ticket metadata in topic."
+            )
+            return
+
         # Verify the button was clicked by authorized user or staff
         # Extract the user_id from the channel name (format: emoji-name-guild-userid)
         # The user ID is the last part after splitting by '-'
         try:
             ticket_owner_id = int(channel.name.split("-")[-1])
+            # Parse the channel topic JSON to get created_by
+            if channel_topic and channel_topic.startswith("{"):
+                try:
+                    topic_data = json.loads(channel_topic)
+                    ticket_owner_id = topic_data.get("ticket_config", {}).get(
+                        "created_by", ticket_owner_id
+                    )
+                except json.JSONDecodeError:
+                    pass  # Fallback to channel name parsing if topic parsing fails
         except (ValueError, IndexError):
             await interaction.followup.send(
                 "❌ Could not determine ticket owner.", ephemeral=True
@@ -557,7 +577,11 @@ class CloseTicketButton(discord.ui.Button):
 
         # Log ticket after channel deletion
         user_closing_ticket = interaction.user.id
-        if transcript_result and ticket_metadata and user_closing_ticket != ticket_owner_id:
+        if (
+            transcript_result
+            and ticket_metadata
+            and user_closing_ticket != ticket_owner_id
+        ):
             try:
                 log_channel_id = ticket_metadata["ticket_config"].get("log_channel")
                 if log_channel_id:
@@ -626,6 +650,11 @@ class CloseTicketButton(discord.ui.Button):
                 logger.error(
                     f"❌ Error processing ticket closure logging: {e}", exc_info=True
                 )
+
+        else:
+            logger.warning(
+                "Transcript generation and closed ticket logging canceled, either due to failed transcript generation or because the ticket owner closed their own ticket."
+            )
 
         # Notify ticket creator after deletion
         try:
