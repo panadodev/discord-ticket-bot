@@ -33,7 +33,7 @@
                     "button_name": "Support Ticket",
                     "button_id": "support_ticket",
                     "button_style": "SUCCESS",
-                    "ticket_channel_icon": "🇸",
+                    "ticket_channel_icon": "🟣",
                     "embed_color": "#8000ff",
                     "has_perms": [
                         "management",
@@ -55,7 +55,7 @@
                     "button_name": "Player Report",
                     "button_id": "player_report",
                     "button_style": "DANGER",
-                    "ticket_channel_icon": "🇷",
+                    "ticket_channel_icon": "🟢",
                     "embed_color": "#00ff00",
                     "has_perms": [
                         "management",
@@ -77,7 +77,7 @@
                     "button_name": "Ban Appeal",
                     "button_id": "ban_appeal",
                     "button_style": "PRIMARY",
-                    "ticket_channel_icon": "🅰️",
+                    "ticket_channel_icon": "🔴",
                     "embed_color": "#ff0000",
                     "has_perms": [
                         "management",
@@ -95,7 +95,7 @@
                     "button_name": "Mute Appeal",
                     "button_id": "mute_appeal",
                     "button_style": "PRIMARY",
-                    "ticket_channel_icon": "🇦",
+                    "ticket_channel_icon": "🟠",
                     "embed_color": "#ff8000",
                     "has_perms": [
                         "management",
@@ -115,7 +115,7 @@
                     "button_name": "Staff Application",
                     "button_id": "staff_application",
                     "button_style": "PRIMARY",
-                    "ticket_channel_icon": "👨‍🎓",
+                    "ticket_channel_icon": "🔵",
                     "embed_color": "#0000ff",
                     "has_perms": [
                         "management"
@@ -135,7 +135,7 @@
                     "button_name": "VIP Related",
                     "button_id": "vip_related",
                     "button_style": "PRIMARY",
-                    "ticket_channel_icon": "❗",
+                    "ticket_channel_icon": "⚪",
                     "embed_color": "#ffff00",
                     "has_perms": [
                         "management"
