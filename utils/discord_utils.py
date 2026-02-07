@@ -245,13 +245,13 @@ class TicketButton(discord.ui.Button):
                     logger.info(f"User {user.name} cancelled ticket creation")
                     return None
 
-                # Check if this question requires a Steam ID (17-digit number)
-                if self.config["orgs"]["tickets"][self.ticket_type].get(
-                    "check_for_steamid_provided"
-                ):
-                    # Use regex to check for a 17-digit number
-                    if not re.search(r"\b\d{17}\b", message.content):
-                        # No 17-digit number found, show the find_steam_id message and reset this question
+                # Check if this is question 1 and requires a Steam ID (17-digit number starting with 7656)
+                if question_index == 0 and self.config["orgs"]["tickets"][
+                    self.ticket_type
+                ].get("check_for_steamid_provided"):
+                    # Use regex to check for a valid Steam ID (7656 followed by 13 digits)
+                    if not re.search(r"\b7656\d{13}", message.content):
+                        # No valid Steam ID found, show the find_steam_id message and reset this question
                         find_steam_id_msg = self.config["orgs"]["tickets"][
                             self.ticket_type
                         ].get("find_steam_id", "")
