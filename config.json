@@ -44,9 +44,10 @@
                         "senior_admin"
                     ],
                     "questions": [
-                        "Hi, please submit your steam id:",
+                        "Hi, please submit your steam id or the name of the server:",
                         "Please describe your issue in detail:"
-                    ]
+                    ],
+                    "check_for_steamid_provided": false
                 },
                 "player_report": {
                     "log_channel": 1033378494702428271,
@@ -64,8 +65,11 @@
                     ],
                     "questions": [
                         "Please provide the steam id/s of the user/s you are reporting:",
+                        "On which server are they:",
                         "Why are they being reported:"
-                    ]
+                    ],
+                    "check_for_steamid_provided": true,
+                    "find_steam_id": "Press F7 in game and click on the *copy* button next to the steam id: \n https://pub-ac6368b6320d4e8bb06d39c4ace57205.r2.dev/findothersteamid.png"
                 },
                 "ban_appeals": {
                     "log_channel": 1033378507163713668,
@@ -81,7 +85,9 @@
                     "questions": [
                         "Hi, please submit your own steam id:",
                         "Please describe the reason for your appeal:"
-                    ]
+                    ],
+                    "check_for_steamid_provided": true,
+                    "find_steam_id": "https://pub-ac6368b6320d4e8bb06d39c4ace57205.r2.dev/findownsteamid.png"
                 },
                 "mute_appeals": {
                     "log_channel": 1394801361857806347,
@@ -99,7 +105,9 @@
                     "questions": [
                         "Hi, please submit your own steam id:",
                         "Please describe the reason for your appeal:"
-                    ]
+                    ],
+                    "check_for_steamid_provided": true,
+                    "find_steam_id": "https://pub-ac6368b6320d4e8bb06d39c4ace57205.r2.dev/findownsteamid.png"
                 },
                 "staff_application": {
                     "log_channel": 1033378546015543296,
@@ -117,7 +125,9 @@
                         "Which position and why do you want to join our staff team?",
                         "What prior experience do you have?",
                         "How many hours can you dedicate weekly?"
-                    ]
+                    ],
+                    "check_for_steamid_provided": true,
+                    "find_steam_id": "https://pub-ac6368b6320d4e8bb06d39c4ace57205.r2.dev/findownsteamid.png"
                 },
                 "vip_related": {
                     "log_channel": 1033378515816550512,
@@ -132,7 +142,9 @@
                     "questions": [
                         "Hi, please submit your steam id:",
                         "Please describe your issue in detail:"
-                    ]
+                    ],
+                    "check_for_steamid_provided": false,
+                    "find_steam_id": "https://pub-ac6368b6320d4e8bb06d39c4ace57205.r2.dev/findownsteamid.png"
                 }
             }
         }

@@ -3,6 +3,7 @@ import io
 import json
 import logging
 import os
+import re
 from typing import Optional
 
 import discord
@@ -216,7 +217,11 @@ class TicketButton(discord.ui.Button):
         welcome_dm = self.config.get("welcome_dm")
         await dm_channel.send(truncate_text(welcome_dm, DISCORD_MESSAGE_LIMIT))
 
-        for i, question in enumerate(questions, 1):
+        question_index = 0
+        while question_index < len(questions):
+            i = question_index + 1
+            question = questions[question_index]
+
             embed = discord.Embed(
                 title=truncate_text(
                     f"Question {i}/{len(questions)}", DISCORD_EMBED_TITLE_LIMIT
@@ -240,6 +245,30 @@ class TicketButton(discord.ui.Button):
                     logger.info(f"User {user.name} cancelled ticket creation")
                     return None
 
+                # Check if this question requires a Steam ID (17-digit number)
+                if self.config["orgs"]["tickets"][self.ticket_type].get(
+                    "check_for_steamid_provided"
+                ):
+                    # Use regex to check for a 17-digit number
+                    if not re.search(r"\b\d{17}\b", message.content):
+                        # No 17-digit number found, show the find_steam_id message and reset this question
+                        find_steam_id_msg = self.config["orgs"]["tickets"][
+                            self.ticket_type
+                        ].get("find_steam_id", "")
+                        if find_steam_id_msg:
+                            await dm_channel.send(
+                                f"❌ No valid Steam ID found. {find_steam_id_msg}"
+                            )
+                        else:
+                            await dm_channel.send(
+                                "❌ No valid Steam ID found. Please provide a 17-digit Steam ID."
+                            )
+                        logger.info(
+                            f"User {user.name} did not provide valid Steam ID for question {i}"
+                        )
+                        # Continue the loop to ask the question again (don't increment question_index)
+                        continue
+
                 # Truncate answer to fit Discord limits (will be used in embed field)
                 truncated_answer = truncate_text(
                     message.content, DISCORD_EMBED_FIELD_VALUE_LIMIT
@@ -251,6 +280,9 @@ class TicketButton(discord.ui.Button):
                     await dm_channel.send(
                         f"⚠️ Your answer was too long and has been truncated to {DISCORD_EMBED_FIELD_VALUE_LIMIT} characters."
                     )
+
+                # Move to next question
+                question_index += 1
 
             except asyncio.TimeoutError:
                 await dm_channel.send("⏱️ Ticket creation timed out. Please try again.")
