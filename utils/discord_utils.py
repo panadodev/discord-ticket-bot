@@ -192,18 +192,10 @@ class TicketButton(discord.ui.Button):
         username_clean = "".join(c for c in username_clean if c.isalnum() or c in "-_")
 
         for channel in guild.text_channels:
-            # Channel name format is: emoji-tickettype-username-guild-userid
-            # Check if the channel contains the ticket type and ends with user ID
-            channel_lower = channel.name.lower()
-
-            # Remove emoji from start (emojis are usually 1-2 characters, skip them)
-            # Then check if it starts with ticket_type and ends with user ID
-            if f"-{ticket_type}-" in channel_lower and channel_lower.endswith(
-                str(user.id)
-            ):
-                # Additional check: ensure username is in the channel name
-                if username_clean in channel_lower:
-                    return channel
+            # Channel name format is: emoji-name-guild-userid
+            # Check if the channel ends with user ID
+            if channel.name.endswith(str(user.id)):
+                return channel
 
         return None
 
@@ -335,12 +327,12 @@ class TicketButton(discord.ui.Button):
 
         logger.info(f"Mapped emoji: '{emoji}'")
 
-        # Create sanitized channel name using ticket type
+        # Create sanitized channel name
         username_clean = user.name.lower().replace(" ", "-")
         guild_clean = source_org.lower().replace(" ", "-")
         channel_name = f"{username_clean}-{guild_clean}-{user.id}"
         # Remove any special characters that Discord doesn't allow
-        channel_name = "".join(c for c in channel_name if c.isalnum() or c in "-_")
+        channel_name = "".join(c for c in channel_name if c.isalnum() or c in "-_.")
 
         # Add emoji prefix to channel name
         full_channel_name = f"{emoji}-{channel_name}"
@@ -512,10 +504,10 @@ class CloseTicketButton(discord.ui.Button):
             return
 
         # Verify the button was clicked by authorized user or staff
-        # Extract the user_id from the channel name (format: emoji-tickettype-username-guild-userid)
-        channel_name_parts = channel.name.split("-")
+        # Extract the user_id from the channel name (format: emoji-name-guild-userid)
+        # The user ID is the last part after splitting by '-'
         try:
-            ticket_owner_id = int(channel_name_parts[-1])
+            ticket_owner_id = int(channel.name.split("-")[-1])
         except (ValueError, IndexError):
             await interaction.followup.send(
                 "❌ Could not determine ticket owner.", ephemeral=True
@@ -564,7 +556,8 @@ class CloseTicketButton(discord.ui.Button):
             # Continue with logging even if deletion fails
 
         # Log ticket after channel deletion
-        if transcript_result and ticket_metadata:
+        user_closing_ticket = interaction.user.id
+        if transcript_result and ticket_metadata and user_closing_ticket != ticket_owner_id:
             try:
                 log_channel_id = ticket_metadata["ticket_config"].get("log_channel")
                 if log_channel_id:
@@ -721,7 +714,7 @@ async def find_user_ticket(
     user_tickets = []
 
     for channel in guild.text_channels:
-        # Channel name format: emoji-tickettype-username-guild-userid
+        # Channel name format: emoji-name-guild-userid
         if channel.name.endswith(str(user_id)):
             user_tickets.append(channel)
 

@@ -310,14 +310,13 @@ async def on_message(message: discord.Message):
         # Check if message is in a ticket channel
         channel_name = message.channel.name
 
-        # Ticket channels end with user ID
+        # Ticket channels end with user ID (format: emoji-name-guild-userid)
         if "-" not in channel_name:
             logger.debug(f"Channel {channel_name} is not a ticket channel.")
             return
 
-        parts = channel_name.split("-")
         try:
-            ticket_owner_id = int(parts[-1])
+            ticket_owner_id = int(channel_name.split("-")[-1])
         except (ValueError, IndexError):
             logger.debug(f"Channel {channel_name} is not a valid ticket channel.")
             return
