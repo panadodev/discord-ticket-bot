@@ -44,10 +44,11 @@
                         "senior_admin"
                     ],
                     "questions": [
-                        "Hi, please submit your steam id or the name of the server:",
-                        "Please describe your issue in detail:"
+                        "What is your steam id or the name of the server:",
+                        "Please describe your issue:"
                     ],
-                    "check_for_steamid_provided": false
+                    "check_for_steamid_provided": false,
+                    "find_steam_id": "https://pub-ac6368b6320d4e8bb06d39c4ace57205.r2.dev/findownsteamid.png"
                 },
                 "player_report": {
                     "log_channel": 1033378494702428271,
@@ -83,8 +84,8 @@
                         "senior_admin"
                     ],
                     "questions": [
-                        "Hi, please submit your own steam id:",
-                        "Please describe the reason for your appeal:"
+                        "Submit your own steam id:",
+                        "What ban are you appealing for and why:"
                     ],
                     "check_for_steamid_provided": true,
                     "find_steam_id": "https://pub-ac6368b6320d4e8bb06d39c4ace57205.r2.dev/findownsteamid.png"
@@ -103,8 +104,8 @@
                         "support"
                     ],
                     "questions": [
-                        "Hi, please submit your own steam id:",
-                        "Please describe the reason for your appeal:"
+                        "Submit your own steam id:",
+                        "Why do you believe you were muted:"
                     ],
                     "check_for_steamid_provided": true,
                     "find_steam_id": "https://pub-ac6368b6320d4e8bb06d39c4ace57205.r2.dev/findownsteamid.png"
@@ -120,7 +121,7 @@
                         "management"
                     ],
                     "questions": [
-                        "Hi, please submit your steam id:",
+                        "Please submit your steam id:",
                         "How old are you?",
                         "Which position and why do you want to join our staff team?",
                         "What prior experience do you have?",
@@ -140,8 +141,8 @@
                         "management"
                     ],
                     "questions": [
-                        "Hi, please submit your steam id:",
-                        "Please describe your issue in detail:"
+                        "Please submit your steam id if relevant:",
+                        "Please describe your issue:"
                     ],
                     "check_for_steamid_provided": false,
                     "find_steam_id": "https://pub-ac6368b6320d4e8bb06d39c4ace57205.r2.dev/findownsteamid.png"
