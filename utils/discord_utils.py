@@ -659,7 +659,7 @@ class CloseTicketButton(discord.ui.Button):
         # Notify ticket creator after deletion
         try:
             ticket_owner = await self.bot.fetch_user(ticket_owner_id)
-            await ticket_owner.send("Your ticket has been closed.")
+            await ticket_owner.send("Your ticket has been closed.", silent=True)
         except Exception as e:
             logger.warning(f"⚠️ Could not notify ticket owner: {e}")
 
