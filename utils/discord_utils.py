@@ -294,11 +294,11 @@ class TicketButton(discord.ui.Button):
         source_org_id: int,
     ) -> None:
         """Create the ticket channel with proper permissions and summary"""
-        # Get categories
-        incoming_cat_id = self.config.get("incoming_tickets_cat")
+        # Get categories from ticket config
+        incoming_cat_id = ticket_config.get("ticket_category")
         if not incoming_cat_id:
-            logger.error("Incoming tickets category ID not configured.")
-            raise ValueError("Incoming tickets category ID not configured.")
+            logger.error("Ticket category ID not configured for this ticket type.")
+            raise ValueError("Ticket category ID not configured for this ticket type.")
         incoming_category = guild.get_channel(incoming_cat_id)
 
         # Create channel name: tickettype-username-org-dcid
@@ -1029,12 +1029,9 @@ class DiscordCommands(commands.Cog):
             return
 
         # Verify it's a ticket channel by checking the topic
-        incoming_cat_id = self.config.get("incoming_tickets_cat")
         if (
             not channel.topic
             or not channel.topic.startswith("{")
-            or not channel.category
-            or channel.category.id != incoming_cat_id
         ):
             await interaction.followup.send(
                 "❌ This doesn't appear to be a valid ticket channel.", ephemeral=True
@@ -1076,7 +1073,6 @@ class DiscordCommands(commands.Cog):
                 },
             },
             "main_guild_id": self.config.get("main_guild_id"),
-            "incoming_tickets_cat": self.config.get("incoming_tickets_cat"),
         }
 
         # Create a select menu view excluding the current ticket type
