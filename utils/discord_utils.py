@@ -100,7 +100,7 @@ class TicketButton(discord.ui.Button):
         main_guild_id = self.config.get("main_guild_id")
         if not main_guild_id:
             await interaction.response.send_message(
-                "❌ Main guild ID not configured.", ephemeral=True
+                "Main guild ID not configured.", ephemeral=True
             )
             logger.error("Main guild ID not configured in config.json")
             return
@@ -108,7 +108,7 @@ class TicketButton(discord.ui.Button):
         guild = self.bot.get_guild(main_guild_id)
         if not guild:
             await interaction.response.send_message(
-                "❌ Could not access the main guild.", ephemeral=True
+                "Could not access the main guild.", ephemeral=True
             )
             logger.error(f"Bot cannot access guild with ID {main_guild_id}")
             return
@@ -116,7 +116,7 @@ class TicketButton(discord.ui.Button):
         # Check if user is already in a ticket creation process
         if user.id in users_in_process:
             await interaction.response.send_message(
-                "❌ You are already in the middle of creating a ticket. Please complete or cancel that process first.",
+                "You are already in the middle of creating a ticket. Please complete or cancel that process first.",
                 ephemeral=True,
             )
             return
@@ -131,7 +131,7 @@ class TicketButton(discord.ui.Button):
         )
         if existing_ticket:
             await interaction.response.send_message(
-                f"❌ You already have an open ticket.",
+                f"You already have an open ticket.",
                 ephemeral=True,
             )
             logger.info(
@@ -168,14 +168,14 @@ class TicketButton(discord.ui.Button):
 
         except discord.Forbidden:
             await interaction.followup.send(
-                "❌ I cannot send you DMs. Please enable DMs from server members and try again.",
+                "I cannot send you DMs. Please enable DMs from server members and try again.",
                 ephemeral=True,
             )
             logger.warning(f"Cannot DM user {user.name} - DMs are disabled")
         except Exception as e:
             logger.error(f"Error creating ticket for {user.name}: {e}", exc_info=True)
             await interaction.followup.send(
-                "❌ An error occurred while creating your ticket. Please try again later.",
+                "An error occurred while creating your ticket. Please try again later.",
                 ephemeral=True,
             )
         finally:
@@ -233,7 +233,7 @@ class TicketButton(discord.ui.Button):
                 )
 
                 if message.content.lower() == "cancel":
-                    await dm_channel.send("❌ Ticket creation cancelled.")
+                    await dm_channel.send("Ticket creation cancelled.")
                     logger.info(f"User {user.name} cancelled ticket creation")
                     return None
 
@@ -249,11 +249,11 @@ class TicketButton(discord.ui.Button):
                         ].get("find_steam_id", "")
                         if find_steam_id_msg:
                             await dm_channel.send(
-                                f"❌ No valid Steam ID found. {find_steam_id_msg}"
+                                f"No valid Steam ID found. {find_steam_id_msg}"
                             )
                         else:
                             await dm_channel.send(
-                                "❌ No valid Steam ID found. Please provide a 17-digit Steam ID."
+                                "No valid Steam ID found. Please provide a 17-digit Steam ID."
                             )
                         logger.info(
                             f"User {user.name} did not provide valid Steam ID for question {i}"
@@ -270,14 +270,14 @@ class TicketButton(discord.ui.Button):
                 # Notify user if their answer was truncated
                 if len(message.content) > DISCORD_EMBED_FIELD_VALUE_LIMIT:
                     await dm_channel.send(
-                        f"⚠️ Your answer was too long and has been truncated to {DISCORD_EMBED_FIELD_VALUE_LIMIT} characters."
+                        f"Your answer was too long and has been truncated to {DISCORD_EMBED_FIELD_VALUE_LIMIT} characters."
                     )
 
                 # Move to next question
                 question_index += 1
 
             except asyncio.TimeoutError:
-                await dm_channel.send("⏱️ Ticket creation timed out. Please try again.")
+                await dm_channel.send("Ticket creation timed out. Please try again.")
                 logger.info(f"Ticket creation timed out for {user.name}")
                 return None
 
@@ -460,22 +460,20 @@ class TicketButton(discord.ui.Button):
             # Pin the embed message
             await message.pin()
             logger.info(
-                f"✅ Sent and pinned ticket summary embed to {ticket_channel.name}"
+                f"Sent and pinned ticket summary embed to {ticket_channel.name}"
             )
         except Exception as e:
-            logger.error(
-                f"❌ Failed to send embed to ticket channel: {e}", exc_info=True
-            )
+            logger.error(f"Failed to send embed to ticket channel: {e}", exc_info=True)
 
         # Notify user in DM
         try:
             dm_channel = await user.create_dm()
             await dm_channel.send(f"Server staff will assist you shortly.")
-            logger.info(f"✅ Sent ticket confirmation DM to {user.name}")
+            logger.info(f"Sent ticket confirmation DM to {user.name}")
         except discord.Forbidden:
-            logger.warning(f"⚠️ Cannot send DM to {user.name} - DMs are disabled")
+            logger.warning(f"Cannot send DM to {user.name} - DMs are disabled")
         except Exception as e:
-            logger.error(f"❌ Failed to send DM notification: {e}", exc_info=True)
+            logger.error(f"Failed to send DM notification: {e}", exc_info=True)
 
         logger.info(f"Created ticket channel {channel_name} for user {user.name}")
 
@@ -499,14 +497,14 @@ class CloseTicketButton(discord.ui.Button):
         # Check if the channel is a ticket channel
         if not isinstance(channel, discord.TextChannel):
             await interaction.followup.send(
-                "❌ This can only be used in a ticket channel.", ephemeral=True
+                "This can only be used in a ticket channel.", ephemeral=True
             )
             return
 
         channel_topic = interaction.channel.topic
         if not channel_topic or not channel_topic.startswith("{"):
             await interaction.followup.send(
-                "❌ This channel does not have valid ticket metadata. Cannot close ticket.",
+                "This channel does not have valid ticket metadata. Cannot close ticket.",
                 ephemeral=True,
             )
             logger.error(
@@ -530,7 +528,7 @@ class CloseTicketButton(discord.ui.Button):
                     pass  # Fallback to channel name parsing if topic parsing fails
         except (ValueError, IndexError):
             await interaction.followup.send(
-                "❌ Could not determine ticket owner.", ephemeral=True
+                "Could not determine ticket owner.", ephemeral=True
             )
             return
 
@@ -561,18 +559,18 @@ class CloseTicketButton(discord.ui.Button):
                 if not transcript_result:
                     logger.error("Failed to generate transcript.")
                 else:
-                    logger.info(f"✅ Generated transcript for {channel_name}")
+                    logger.info(f"Generated transcript for {channel_name}")
 
         except Exception as e:
-            logger.error(f"❌ Error generating transcript: {e}", exc_info=True)
+            logger.error(f"Error generating transcript: {e}", exc_info=True)
 
         # Now delete the channel
         try:
             await asyncio.sleep(3)
             await channel.delete()
-            logger.info(f"✅ Deleted ticket channel: {channel_name}")
+            logger.info(f"Deleted ticket channel: {channel_name}")
         except Exception as e:
-            logger.error(f"❌ Failed to delete ticket channel: {e}", exc_info=True)
+            logger.error(f"Failed to delete ticket channel: {e}", exc_info=True)
             # Continue with logging even if deletion fails
 
         # Log ticket after channel deletion
@@ -611,7 +609,7 @@ class CloseTicketButton(discord.ui.Button):
                             content=log_message,
                             file=transcript_file,
                         )
-                        logger.info(f"✅ Logged transcript to log channel")
+                        logger.info(f"Logged transcript to log channel")
 
                 logger.info("Logging ticket to database")
                 origin_org_guild = ticket_metadata["ticket_config"].get(
@@ -636,10 +634,10 @@ class CloseTicketButton(discord.ui.Button):
                         if success_saving_in_database is None:
                             logger.error("Failed to log ticket to database.")
                         else:
-                            logger.info(f"✅ Logged ticket to database")
+                            logger.info(f"Logged ticket to database")
                     except Exception as db_error:
                         logger.error(
-                            f"⚠️ Failed to save ticket to database: {db_error}",
+                            f"Failed to save ticket to database: {db_error}",
                             exc_info=True,
                         )
                 else:
@@ -648,7 +646,7 @@ class CloseTicketButton(discord.ui.Button):
                     )
             except Exception as e:
                 logger.error(
-                    f"❌ Error processing ticket closure logging: {e}", exc_info=True
+                    f"Error processing ticket closure logging: {e}", exc_info=True
                 )
 
         else:
@@ -661,7 +659,7 @@ class CloseTicketButton(discord.ui.Button):
             ticket_owner = await self.bot.fetch_user(ticket_owner_id)
             await ticket_owner.send("Your ticket has been closed.", silent=True)
         except Exception as e:
-            logger.warning(f"⚠️ Could not notify ticket owner: {e}")
+            logger.warning(f"Could not notify ticket owner: {e}")
 
         # Update bot status with current ticket count
         try:
@@ -673,7 +671,7 @@ class CloseTicketButton(discord.ui.Button):
                 )
             )
         except Exception as e:
-            logger.error(f"❌ Failed to update bot status: {e}", exc_info=True)
+            logger.error(f"Failed to update bot status: {e}", exc_info=True)
 
 
 class TicketSupportEmbedManager:
@@ -786,7 +784,7 @@ class TicketTypeSelect(discord.ui.Select):
 
         if not isinstance(channel, discord.TextChannel):
             await interaction.followup.send(
-                "❌ This can only be used in a ticket channel.", ephemeral=True
+                "This can only be used in a ticket channel.", ephemeral=True
             )
             return
 
@@ -809,7 +807,7 @@ class TicketTypeSelect(discord.ui.Select):
         main_guild_id = self.config.get("main_guild_id")
         if not main_guild_id:
             await interaction.followup.send(
-                "❌ Main guild ID not configured.", ephemeral=True
+                "Main guild ID not configured.", ephemeral=True
             )
             logger.error("Main guild ID not configured in config.json")
             return
@@ -817,7 +815,7 @@ class TicketTypeSelect(discord.ui.Select):
         guild = self.bot.get_guild(main_guild_id)
         if not guild:
             await interaction.followup.send(
-                "❌ Could not access the main guild.", ephemeral=True
+                "Could not access the main guild.", ephemeral=True
             )
             logger.error(f"Bot cannot access guild with ID {main_guild_id}")
             return
@@ -910,7 +908,7 @@ class TicketTypeSelect(discord.ui.Select):
                 exc_info=True,
             )
             await interaction.followup.send(
-                "❌ Failed to update channel permissions.", ephemeral=True
+                "Failed to update channel permissions.", ephemeral=True
             )
             return
 
@@ -971,7 +969,7 @@ class TicketTypeSelect(discord.ui.Select):
 
         # Send confirmation message
         embed = discord.Embed(
-            title=truncate_text("✅ Ticket Reassigned", DISCORD_EMBED_TITLE_LIMIT),
+            title=truncate_text("Ticket Reassigned", DISCORD_EMBED_TITLE_LIMIT),
             description=truncate_text(
                 f"This ticket has been reassigned to **{selected_type}** team by {interaction.user.mention}",
                 DISCORD_EMBED_DESCRIPTION_LIMIT,
@@ -1014,7 +1012,7 @@ class DiscordCommands(commands.Cog):
         # Check if config loaded successfully
         if not self.config:
             await interaction.followup.send(
-                "❌ Configuration not loaded. Please contact an administrator.",
+                "Configuration not loaded. Please contact an administrator.",
                 ephemeral=True,
             )
             logger.error("Config not loaded in assign_ticket")
@@ -1024,7 +1022,7 @@ class DiscordCommands(commands.Cog):
         main_guild_id = self.config.get("main_guild_id")
         if not interaction.guild or interaction.guild.id != main_guild_id:
             await interaction.followup.send(
-                "❌ This command can only be used in the main server.", ephemeral=True
+                "This command can only be used in the main server.", ephemeral=True
             )
             return
 
@@ -1033,14 +1031,14 @@ class DiscordCommands(commands.Cog):
         # Check if this is a ticket channel
         if not isinstance(channel, discord.TextChannel):
             await interaction.followup.send(
-                "❌ This command can only be used in a ticket channel.", ephemeral=True
+                "This command can only be used in a ticket channel.", ephemeral=True
             )
             return
 
         # Verify it's a ticket channel by checking the topic
         if not channel.topic or not channel.topic.startswith("{"):
             await interaction.followup.send(
-                "❌ This doesn't appear to be a valid ticket channel.", ephemeral=True
+                "This doesn't appear to be a valid ticket channel.", ephemeral=True
             )
             return
 
@@ -1051,7 +1049,7 @@ class DiscordCommands(commands.Cog):
         except (json.JSONDecodeError, KeyError) as e:
             logger.error(f"Failed to parse ticket metadata: {e}")
             await interaction.followup.send(
-                "❌ Could not read ticket information.", ephemeral=True
+                "Could not read ticket information.", ephemeral=True
             )
             return
 
@@ -1064,7 +1062,7 @@ class DiscordCommands(commands.Cog):
 
         if not filtered_tickets:
             await interaction.followup.send(
-                "❌ No other ticket types available to reassign to.", ephemeral=True
+                "No other ticket types available to reassign to.", ephemeral=True
             )
             return
 
@@ -1103,7 +1101,7 @@ class DiscordCommands(commands.Cog):
 
         if not self.config:
             await interaction.followup.send(
-                "❌ Configuration not loaded. Please contact an administrator.",
+                "Configuration not loaded. Please contact an administrator.",
                 ephemeral=True,
             )
             logger.error("Config not loaded in average_ticket_duration")
@@ -1114,7 +1112,7 @@ class DiscordCommands(commands.Cog):
             "main_guild_id"
         ):
             await interaction.followup.send(
-                "❌ This command can only be used in the main server.", ephemeral=True
+                "This command can only be used in the main server.", ephemeral=True
             )
             return
         # check user is management
@@ -1123,14 +1121,14 @@ class DiscordCommands(commands.Cog):
             management_role = interaction.guild.get_role(management_role_id)
             if management_role not in interaction.user.roles:
                 await interaction.followup.send(
-                    "❌ You do not have permission to use this command.", ephemeral=True
+                    "You do not have permission to use this command.", ephemeral=True
                 )
                 return
 
         main_guild_id = self.config.get("main_guild_id")
         if not main_guild_id:
             await interaction.followup.send(
-                "❌ Main guild ID not configured.", ephemeral=True
+                "Main guild ID not configured.", ephemeral=True
             )
             logger.error("Main guild ID not configured in config.json")
             return
@@ -1139,7 +1137,7 @@ class DiscordCommands(commands.Cog):
             avg_duration = await DatabaseOperations.average_respond_times()
             if avg_duration is None or not avg_duration:
                 await interaction.followup.send(
-                    "❌ Failed to calculate average ticket duration or no tickets found.",
+                    "Failed to calculate average ticket duration or no tickets found.",
                     ephemeral=True,
                 )
                 logger.error("Failed to calculate average ticket duration")
@@ -1201,6 +1199,6 @@ class DiscordCommands(commands.Cog):
                 f"Error calculating average ticket duration: {e}", exc_info=True
             )
             await interaction.followup.send(
-                "❌ An error occurred while calculating average ticket duration.",
+                "An error occurred while calculating average ticket duration.",
                 ephemeral=True,
             )
