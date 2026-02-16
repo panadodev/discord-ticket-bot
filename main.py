@@ -51,26 +51,27 @@ logging.basicConfig(
 logger = logging.getLogger("main.py")
 
 
+# Custom Bot class to initialize Tortoise ORM
+class TicketBot(commands.Bot):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.tortoise_initialized = False
+
+    async def setup_hook(self):
+        """Called before the bot connects to Discord"""
+        if not self.tortoise_initialized:
+            try:
+                await init_tortoise()
+                self.tortoise_initialized = True
+                logger.info("✅ Tortoise ORM initialized successfully")
+            except Exception as e:
+                logger.error(f"❌ Failed to initialize Tortoise ORM: {e}")
+                self.tortoise_initialized = False
+
+
 # Initialize Discord bot
 intents = discord.Intents.all()
-bot = commands.Bot(command_prefix="", intents=intents)
-
-# Track if Tortoise ORM has been initialized
-tortoise_initialized = False
-
-
-@bot.setup_hook
-async def setup_hook():
-    """Called before the bot connects to Discord"""
-    global tortoise_initialized
-    if not tortoise_initialized:
-        try:
-            await init_tortoise()
-            tortoise_initialized = True
-            logger.info("✅ Tortoise ORM initialized successfully")
-        except Exception as e:
-            logger.error(f"❌ Failed to initialize Tortoise ORM: {e}")
-            tortoise_initialized = False
+bot = TicketBot(command_prefix="", intents=intents)
 
 
 @bot.event
@@ -79,7 +80,7 @@ async def on_ready():
 
     try:
         # Tortoise ORM should already be initialized in setup_hook
-        if not tortoise_initialized:
+        if not bot.tortoise_initialized:
             logger.error("❌ Tortoise ORM was not initialized in setup_hook")
             return
 
