@@ -896,10 +896,19 @@ class TicketTypeSelect(discord.ui.Select):
 
         # Update channel permissions
         try:
-            # Apply all overwrites at once to replace old permissions
-            await channel.edit(overwrites=overwrites)
+            # Get the new ticket category
+            new_category_id = ticket_config.get("ticket_category")
+            new_category = None
+            if new_category_id:
+                new_category = guild.get_channel(new_category_id)
+
+            # Apply all overwrites at once to replace old permissions and move to new category
+            await channel.edit(overwrites=overwrites, category=new_category)
         except Exception as e:
-            logger.error(f"Failed to update channel permissions: {e}", exc_info=True)
+            logger.error(
+                f"Failed to update channel permissions or move category: {e}",
+                exc_info=True,
+            )
             await interaction.followup.send(
                 "❌ Failed to update channel permissions.", ephemeral=True
             )
@@ -1029,10 +1038,7 @@ class DiscordCommands(commands.Cog):
             return
 
         # Verify it's a ticket channel by checking the topic
-        if (
-            not channel.topic
-            or not channel.topic.startswith("{")
-        ):
+        if not channel.topic or not channel.topic.startswith("{"):
             await interaction.followup.send(
                 "❌ This doesn't appear to be a valid ticket channel.", ephemeral=True
             )
