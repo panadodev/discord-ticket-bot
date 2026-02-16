@@ -55,17 +55,33 @@ logger = logging.getLogger("main.py")
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix="", intents=intents)
 
+# Track if Tortoise ORM has been initialized
+tortoise_initialized = False
+
+
+@bot.setup_hook
+async def setup_hook():
+    """Called before the bot connects to Discord"""
+    global tortoise_initialized
+    if not tortoise_initialized:
+        try:
+            await init_tortoise()
+            tortoise_initialized = True
+            logger.info("✅ Tortoise ORM initialized successfully")
+        except Exception as e:
+            logger.error(f"❌ Failed to initialize Tortoise ORM: {e}")
+            tortoise_initialized = False
+
 
 @bot.event
 async def on_ready():
     await bot.wait_until_ready()
 
     try:
-        # Initialize Tortoise ORM for database access
-        try:
-            await init_tortoise()
-        except Exception as e:
-            logger.warning(f"⚠️ Failed to initialize database: {e}")
+        # Tortoise ORM should already be initialized in setup_hook
+        if not tortoise_initialized:
+            logger.error("❌ Tortoise ORM was not initialized in setup_hook")
+            return
 
         # Setup persistent views and ticket embed manager
         ticket_embed_manager = TicketSupportEmbedManager(bot)
