@@ -6,7 +6,7 @@
             1466405884153434182,
             1465047875581903074
         ],
-        "welcome_dm": "**Ticket Creation Process**\nPlease answer the following questions, avoid long answers. You have 10 minutes to respond to each question. \nType `cancel` to cancel the ticket creation.",
+        "welcome_dm": "**Ticket Creation Process**\n* Avoid long answers. \n* You have 10 minutes to respond to each question.\n* Respect staff members (Will not tolerate any abuse)\n* Type `cancel` to cancel the ticket creation.",
         "orgs": {
             "willjum": {
                 "roles": {
@@ -44,7 +44,7 @@
                         "senior_admin"
                     ],
                     "questions": [
-                        "What is your steam id or the name of the server:",
+                        "What is your steam id or the name of the server (Optional):",
                         "Please describe your issue:"
                     ],
                     "check_for_steamid_provided": false,
@@ -66,7 +66,7 @@
                         "senior_admin"
                     ],
                     "questions": [
-                        "Please provide the steam id/s of the user/s you are reporting:",
+                        "Please provide the steam id/s of the user/s you are reporting (Not optional):",
                         "On which server are they:",
                         "Why are they being reported:"
                     ],
@@ -86,7 +86,7 @@
                         "senior_admin"
                     ],
                     "questions": [
-                        "Submit your own steam id:",
+                        "Submit your own steam id (Not optional):",
                         "What ban are you appealing for and why:"
                     ],
                     "check_for_steamid_provided": true,
@@ -107,7 +107,7 @@
                         "support"
                     ],
                     "questions": [
-                        "Submit your own steam id:",
+                        "Submit your own steam id (Not optional):",
                         "Why do you believe you were muted:"
                     ],
                     "check_for_steamid_provided": true,
@@ -125,7 +125,7 @@
                         "management"
                     ],
                     "questions": [
-                        "Please submit your steam id:",
+                        "Please submit your steam id (Not optional):",
                         "How old are you?",
                         "Which position and why do you want to join our staff team?",
                         "What prior experience do you have?",
@@ -146,7 +146,7 @@
                         "management"
                     ],
                     "questions": [
-                        "Please submit your steam id if relevant:",
+                        "Please submit your steam id if relevant (Optional):",
                         "Please describe your issue:"
                     ],
                     "check_for_steamid_provided": false,

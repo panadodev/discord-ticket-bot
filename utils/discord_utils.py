@@ -249,14 +249,14 @@ class TicketButton(discord.ui.Button):
                         ].get("find_steam_id", "")
                         if find_steam_id_msg:
                             await dm_channel.send(
-                                f"No valid Steam ID found. {find_steam_id_msg}"
+                                f"No valid **Steam ID** found, {find_steam_id_msg}"
                             )
                         else:
                             await dm_channel.send(
-                                "No valid Steam ID found. Please provide a 17-digit Steam ID."
+                                "No valid **Steam ID** found. Please provide a 17-digit **Steam ID**."
                             )
                         logger.info(
-                            f"User {user.name} did not provide valid Steam ID for question {i}"
+                            f"User {user.name} did not provide valid **Steam ID** for question {i}"
                         )
                         # Continue the loop to ask the question again (don't increment question_index)
                         continue

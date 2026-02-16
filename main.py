@@ -208,11 +208,16 @@ async def on_message(message: discord.Message):
                 ),
                 color=discord.Color.blue(),
             )
+            icon_url = (
+                message.author.display_avatar.url
+                if message.author.display_avatar
+                else "https://pub-ac6368b6320d4e8bb06d39c4ace57205.r2.dev/discord-logo-01-discord-logo-11562849833clsolz2mbc-280419404.png"
+            )
             embed.set_author(
                 name=truncate_text(
                     message.author.global_name, DISCORD_EMBED_TITLE_LIMIT
                 ),
-                icon_url=message.author.display_avatar.url,
+                icon_url=icon_url,
             )
 
             # Handle attachments with security checks
