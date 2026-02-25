@@ -1209,42 +1209,43 @@ class DiscordCommands(commands.Cog):
     @app_commands.describe()
     async def mark_awaiting_response(self, interaction: Interaction) -> None:
         """Mark a ticket as awaiting response from the user"""
-        # Defer early to avoid interaction timeout issues
-        await interaction.response.defer(ephemeral=True)
-
-        channel = interaction.channel
-
-        # Parse ticket metadata
-        if not channel.topic or not channel.topic.startswith("{"):
-            await interaction.followup.send(
-                "This channel does not have valid ticket metadata.", ephemeral=True
-            )
-            return
-
         try:
-            ticket_metadata = json.loads(channel.topic)
-        except json.JSONDecodeError:
-            await interaction.followup.send(
-                "Failed to parse ticket metadata.", ephemeral=True
-            )
-            return
+            # Defer early to avoid interaction timeout issues
+            await interaction.response.defer(ephemeral=True)
 
-        if not ticket_metadata.get("ticket_config", {}):
-            await interaction.followup.send(
-                "This channel does not have valid ticket metadata.", ephemeral=True
-            )
-            return
-        elif ticket_metadata["ticket_config"].get("awaiting_response", False):
-            await interaction.followup.send(
-                "This ticket is already marked as awaiting response.", ephemeral=True
-            )
-            return
+            channel = interaction.channel
 
-        # Set awaiting response flags with timestamp
-        ticket_metadata["ticket_config"]["awaiting_response"] = True
-        ticket_metadata["ticket_config"]["awaiting_response_set_at"] = int(time.time())
+            # Parse ticket metadata
+            if not channel.topic or not channel.topic.startswith("{"):
+                await interaction.followup.send(
+                    "This channel does not have valid ticket metadata.", ephemeral=True
+                )
+                return
 
-        awaiting_response_category_id = self.config["awaiting_response_category"]
+            try:
+                ticket_metadata = json.loads(channel.topic)
+            except json.JSONDecodeError:
+                await interaction.followup.send(
+                    "Failed to parse ticket metadata.", ephemeral=True
+                )
+                return
+
+            if not ticket_metadata.get("ticket_config", {}):
+                await interaction.followup.send(
+                    "This channel does not have valid ticket metadata.", ephemeral=True
+                )
+                return
+            elif ticket_metadata["ticket_config"].get("awaiting_response", False):
+                await interaction.followup.send(
+                    "This ticket is already marked as awaiting response.", ephemeral=True
+                )
+                return
+
+            # Set awaiting response flags with timestamp
+            ticket_metadata["ticket_config"]["awaiting_response"] = True
+            ticket_metadata["ticket_config"]["awaiting_response_set_at"] = int(time.time())
+
+            awaiting_response_category_id = self.config["awaiting_response_category"]
         awaiting_response_category = self.bot.get_channel(awaiting_response_category_id)
         if not awaiting_response_category:
             await interaction.followup.send(
@@ -1306,6 +1307,20 @@ class DiscordCommands(commands.Cog):
                 ephemeral=True,
             )
 
+        except Exception as e:
+            logger.error(
+                f"Unexpected error in mark_awaiting_response command: {e}",
+                exc_info=True,
+            )
+            try:
+                await interaction.followup.send(
+                    "An unexpected error occurred. Please contact an administrator.",
+                    ephemeral=True,
+                )
+            except:
+                # If we can't even send the followup, just log it
+                logger.error("Failed to send error message to user")
+
 
 class TicketResponseTimeoutHandler(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -1315,15 +1330,16 @@ class TicketResponseTimeoutHandler(commands.Cog):
     @tasks.loop(minutes=30)
     # if no response is received within the specified timeout, close the ticket and send the transcript in the logs channel but do not log to the database since the ticket was never actually responded to
     async def check_awaiting_response_tickets(self):
-        logger.info("Checking for tickets marked as awaiting response...")
-        awaiting_response_category_id = self.config["awaiting_response_category"]
-        awaiting_response_category = self.bot.get_channel(awaiting_response_category_id)
-        if not awaiting_response_category:
-            logger.error(
-                f"Awaiting response category with ID {awaiting_response_category_id} not found"
-            )
-            return
-        for channel in awaiting_response_category.text_channels:
+        try:
+            logger.info("Checking for tickets marked as awaiting response...")
+            awaiting_response_category_id = self.config["awaiting_response_category"]
+            awaiting_response_category = self.bot.get_channel(awaiting_response_category_id)
+            if not awaiting_response_category:
+                logger.error(
+                    f"Awaiting response category with ID {awaiting_response_category_id} not found"
+                )
+                return
+            for channel in awaiting_response_category.text_channels:
             try:
                 if channel.topic and channel.topic.startswith("{"):
                     ticket_metadata = json.loads(channel.topic)
@@ -1379,3 +1395,22 @@ class TicketResponseTimeoutHandler(commands.Cog):
                     f"Error checking awaiting response ticket {channel.name}: {e}",
                     exc_info=True,
                 )
+        except Exception as e:
+            logger.error(
+                f"Critical error in check_awaiting_response_tickets loop: {e}",
+                exc_info=True,
+            )
+
+    @check_awaiting_response_tickets.before_loop
+    async def before_check_awaiting_response_tickets(self):
+        """Wait for the bot to be ready before starting the loop"""
+        await self.bot.wait_until_ready()
+        logger.info("Bot is ready, starting awaiting response ticket checker...")
+
+    @check_awaiting_response_tickets.error
+    async def check_awaiting_response_tickets_error(self, error):
+        """Handle errors in the check_awaiting_response_tickets loop"""
+        logger.error(
+            f"Error in check_awaiting_response_tickets task loop: {error}",
+            exc_info=True,
+        )
