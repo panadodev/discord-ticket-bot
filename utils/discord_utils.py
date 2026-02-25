@@ -576,7 +576,8 @@ class TicketButton(discord.ui.Button):
         # Create summary embed
         embed = discord.Embed(
             title=truncate_text(
-                guild_clean + ticket_config["button_name"], DISCORD_EMBED_TITLE_LIMIT
+                f"{guild_clean} {ticket_config['button_name']}",
+                DISCORD_EMBED_TITLE_LIMIT,
             ),
             description=truncate_text(
                 f"{user.mention}", DISCORD_EMBED_DESCRIPTION_LIMIT
