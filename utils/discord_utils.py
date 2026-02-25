@@ -1516,7 +1516,7 @@ class TicketResponseTimeoutHandler(commands.Cog):
         self.bot = bot
         self.config = load_config()
 
-    @tasks.loop(minutes=30)
+    @tasks.loop(minutes=10)
     # if no response is received within the specified timeout, close the ticket and send the transcript in the logs channel but do not log to the database since the ticket was never actually responded to
     async def check_awaiting_response_tickets(self):
         try:

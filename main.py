@@ -22,6 +22,7 @@ from utils.discord_utils import (
     DISCORD_MESSAGE_LIMIT,
     CloseTicketButton,
     DiscordCommands,
+    TicketResponseTimeoutHandler,
     TicketSupportEmbedManager,
     truncate_text,
 )
@@ -90,6 +91,12 @@ async def on_ready():
         # Add the DiscordCommands cog
         await bot.add_cog(DiscordCommands(bot))
         logger.info("Added DiscordCommands cog")
+
+        # Add the TicketResponseTimeoutHandler cog and start the loop task
+        timeout_handler = TicketResponseTimeoutHandler(bot)
+        await bot.add_cog(timeout_handler)
+        timeout_handler.check_awaiting_response_tickets.start()
+        logger.info("Added TicketResponseTimeoutHandler cog and started loop task")
 
         if not ticket_embed_manager.config:
             logger.error("Failed to load config")
