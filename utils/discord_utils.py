@@ -1246,36 +1246,35 @@ class DiscordCommands(commands.Cog):
             ticket_metadata["ticket_config"]["awaiting_response_set_at"] = int(time.time())
 
             awaiting_response_category_id = self.config["awaiting_response_category"]
-        awaiting_response_category = self.bot.get_channel(awaiting_response_category_id)
-        if not awaiting_response_category:
-            await interaction.followup.send(
-                "Awaiting response category not found. Please contact an administrator.",
-                ephemeral=True,
-            )
-            logger.error(
-                f"Awaiting response category with ID {awaiting_response_category_id} not found"
-            )
-            return
+            awaiting_response_category = self.bot.get_channel(awaiting_response_category_id)
+            if not awaiting_response_category:
+                await interaction.followup.send(
+                    "Awaiting response category not found. Please contact an administrator.",
+                    ephemeral=True,
+                )
+                logger.error(
+                    f"Awaiting response category with ID {awaiting_response_category_id} not found"
+                )
+                return
 
-        # Validate channel types
-        if not isinstance(channel, discord.TextChannel):
-            await interaction.followup.send(
-                "This command can only be used in a text channel.",
-                ephemeral=True,
-            )
-            return
+            # Validate channel types
+            if not isinstance(channel, discord.TextChannel):
+                await interaction.followup.send(
+                    "This command can only be used in a text channel.",
+                    ephemeral=True,
+                )
+                return
 
-        if not isinstance(awaiting_response_category, discord.CategoryChannel):
-            await interaction.followup.send(
-                "Awaiting response category is not a valid category.",
-                ephemeral=True,
-            )
-            logger.error(
-                f"Channel {awaiting_response_category_id} is not a CategoryChannel"
-            )
-            return
+            if not isinstance(awaiting_response_category, discord.CategoryChannel):
+                await interaction.followup.send(
+                    "Awaiting response category is not a valid category.",
+                    ephemeral=True,
+                )
+                logger.error(
+                    f"Channel {awaiting_response_category_id} is not a CategoryChannel"
+                )
+                return
 
-        try:
             # Update channel topic with new metadata and move to awaiting category
             await channel.edit(
                 category=awaiting_response_category,
@@ -1295,16 +1294,6 @@ class DiscordCommands(commands.Cog):
             )
             logger.info(
                 f"Ticket {channel.name} marked as awaiting response by {interaction.user.name}"
-            )
-
-        except Exception as e:
-            logger.error(
-                f"Failed to move channel to awaiting response category: {e}",
-                exc_info=True,
-            )
-            await interaction.followup.send(
-                "Failed to move ticket to awaiting response category. Please contact an administrator.",
-                ephemeral=True,
             )
 
         except Exception as e:
