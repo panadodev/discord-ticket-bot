@@ -1244,9 +1244,7 @@ class DiscordCommands(commands.Cog):
         ticket_metadata["ticket_config"]["awaiting_response"] = True
         ticket_metadata["ticket_config"]["awaiting_response_set_at"] = int(time.time())
 
-        awaiting_response_category_id = self.config["config"][
-            "awaiting_response_category"
-        ]
+        awaiting_response_category_id = self.config["awaiting_response_category"]
         awaiting_response_category = self.bot.get_channel(awaiting_response_category_id)
         if not awaiting_response_category:
             await interaction.followup.send(
@@ -1284,7 +1282,7 @@ class DiscordCommands(commands.Cog):
             )
 
             # Notify in channel
-            timeout = self.config["config"].get("awaiting_response_timeout", 48)
+            timeout = self.config.get("awaiting_response_timeout", 48)
             timeout_unix = int(time.time()) + timeout * 3600
             await channel.send(
                 f"This ticket is marked as awaiting response and will expire if no response is received <t:{timeout_unix}:R>."
@@ -1318,9 +1316,7 @@ class TicketResponseTimeoutHandler(commands.Cog):
     # if no response is received within the specified timeout, close the ticket and send the transcript in the logs channel but do not log to the database since the ticket was never actually responded to
     async def check_awaiting_response_tickets(self):
         logger.info("Checking for tickets marked as awaiting response...")
-        awaiting_response_category_id = self.config["config"][
-            "awaiting_response_category"
-        ]
+        awaiting_response_category_id = self.config["awaiting_response_category"]
         awaiting_response_category = self.bot.get_channel(awaiting_response_category_id)
         if not awaiting_response_category:
             logger.error(
@@ -1339,9 +1335,7 @@ class TicketResponseTimeoutHandler(commands.Cog):
                         awaiting_response_set_at = ticket_metadata["ticket_config"][
                             "awaiting_response_set_at"
                         ]
-                        timeout_hours = self.config["config"].get(
-                            "awaiting_response_timeout", 48
-                        )
+                        timeout_hours = self.config.get("awaiting_response_timeout", 48)
                         if (
                             time.time()
                             > awaiting_response_set_at + timeout_hours * 3600
