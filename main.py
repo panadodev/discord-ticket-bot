@@ -317,6 +317,72 @@ async def on_message(message: discord.Message):
                             f"Failed to download attachment {attachment.filename}: {e}"
                         )
 
+            # Check if ticket is marked as awaiting response and move it back if so
+            if ticket_channel.topic and ticket_channel.topic.startswith("{"):
+                try:
+                    ticket_metadata = json.loads(ticket_channel.topic)
+                    if ticket_metadata.get("ticket_config", {}).get(
+                        "awaiting_response", False
+                    ):
+                        # Get ticket type and find the normal category
+                        ticket_type = ticket_metadata["ticket_config"].get(
+                            "ticket_type"
+                        )
+                        if ticket_type:
+                            # Get the normal ticket category from config
+                            ticket_config = (
+                                config.get("orgs", {})
+                                .get("tickets", {})
+                                .get(ticket_type, {})
+                            )
+                            normal_category_id = ticket_config.get("ticket_category")
+
+                            if normal_category_id:
+                                normal_category = bot.get_channel(normal_category_id)
+                                if normal_category:
+                                    # Update metadata - remove awaiting response flags
+                                    ticket_metadata["ticket_config"][
+                                        "awaiting_response"
+                                    ] = False
+                                    if (
+                                        "awaiting_response_set_at"
+                                        in ticket_metadata["ticket_config"]
+                                    ):
+                                        del ticket_metadata["ticket_config"][
+                                            "awaiting_response_set_at"
+                                        ]
+
+                                    # Move channel back to normal category and update topic
+                                    await ticket_channel.edit(
+                                        category=normal_category,
+                                        topic=json.dumps(ticket_metadata),
+                                    )
+
+                                    # Send notification in channel
+                                    await ticket_channel.send(
+                                        f"{message.author.mention} has responded. Ticket moved back to active category."
+                                    )
+                                    logger.info(
+                                        f"Moved ticket {ticket_channel.name} back to active category after user response"
+                                    )
+                                else:
+                                    logger.warning(
+                                        f"Could not find normal category with ID {normal_category_id}"
+                                    )
+                            else:
+                                logger.warning(
+                                    f"No ticket_category found in config for ticket type {ticket_type}"
+                                )
+                except json.JSONDecodeError:
+                    logger.warning(
+                        f"Failed to parse ticket metadata from {ticket_channel.name}"
+                    )
+                except Exception as e:
+                    logger.error(
+                        f"Error handling awaiting response status for {ticket_channel.name}: {e}",
+                        exc_info=True,
+                    )
+
             await ticket_channel.send(embed=embed, files=files if files else None)
             logger.info(
                 f"Forwarded DM from {message.author.global_name} to ticket {ticket_channel.name}"
