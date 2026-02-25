@@ -63,6 +63,115 @@ def load_config() -> Optional[dict]:
         return None
 
 
+async def safe_interaction_response(interaction: Interaction, *args, **kwargs) -> bool:
+    """
+    Safely send an interaction response with rate limit handling.
+    Returns True if successful, False otherwise.
+    """
+    try:
+        if interaction.response.is_done():
+            # Response already sent, use followup instead
+            await interaction.followup.send(*args, **kwargs)
+        else:
+            await interaction.response.send_message(*args, **kwargs)
+        return True
+    except discord.errors.HTTPException as e:
+        if e.status == 429:  # Rate limited
+            logger.warning(f"Rate limited when responding to interaction: {e}")
+            # Discord.py handles retry automatically, but log it
+            try:
+                # Try one more time after discord.py's automatic retry
+                if not interaction.response.is_done():
+                    await interaction.response.send_message(*args, **kwargs)
+                else:
+                    await interaction.followup.send(*args, **kwargs)
+                return True
+            except Exception as retry_error:
+                logger.error(f"Failed to respond after rate limit retry: {retry_error}")
+                return False
+        elif e.status == 404 and e.code == 10062:  # Unknown interaction
+            logger.warning(
+                "Interaction token expired or invalid - took too long to respond"
+            )
+            return False
+        else:
+            logger.error(f"HTTP error responding to interaction: {e}", exc_info=True)
+            return False
+    except asyncio.TimeoutError:
+        logger.error("Timeout when responding to interaction")
+        return False
+    except Exception as e:
+        logger.error(f"Unexpected error responding to interaction: {e}", exc_info=True)
+        return False
+
+
+async def safe_followup_send(interaction: Interaction, *args, **kwargs) -> bool:
+    """
+    Safely send a followup message with rate limit handling.
+    Returns True if successful, False otherwise.
+    """
+    try:
+        await interaction.followup.send(*args, **kwargs)
+        return True
+    except discord.errors.HTTPException as e:
+        if e.status == 429:  # Rate limited
+            logger.warning(f"Rate limited when sending followup: {e}")
+            # Discord.py handles retry automatically
+            await asyncio.sleep(1)  # Small delay
+            try:
+                await interaction.followup.send(*args, **kwargs)
+                return True
+            except Exception as retry_error:
+                logger.error(
+                    f"Failed to send followup after rate limit retry: {retry_error}"
+                )
+                return False
+        elif e.status == 404 and e.code == 10062:  # Unknown interaction
+            logger.warning("Interaction token expired - took too long to respond")
+            return False
+        else:
+            logger.error(f"HTTP error sending followup: {e}", exc_info=True)
+            return False
+    except asyncio.TimeoutError:
+        logger.error("Timeout when sending followup")
+        return False
+    except Exception as e:
+        logger.error(f"Unexpected error sending followup: {e}", exc_info=True)
+        return False
+
+
+async def safe_defer(interaction: Interaction, ephemeral: bool = False) -> bool:
+    """
+    Safely defer an interaction with rate limit handling.
+    Returns True if successful, False otherwise.
+    """
+    try:
+        if not interaction.response.is_done():
+            await interaction.response.defer(ephemeral=ephemeral)
+        return True
+    except discord.errors.HTTPException as e:
+        if e.status == 429:  # Rate limited
+            logger.warning(f"Rate limited when deferring interaction: {e}")
+            # Wait a bit and try once more
+            await asyncio.sleep(0.5)
+            try:
+                if not interaction.response.is_done():
+                    await interaction.response.defer(ephemeral=ephemeral)
+                return True
+            except Exception as retry_error:
+                logger.error(f"Failed to defer after rate limit retry: {retry_error}")
+                return False
+        elif e.status == 404 and e.code == 10062:  # Unknown interaction
+            logger.warning("Interaction expired when trying to defer")
+            return False
+        else:
+            logger.error(f"HTTP error deferring interaction: {e}", exc_info=True)
+            return False
+    except Exception as e:
+        logger.error(f"Unexpected error deferring interaction: {e}", exc_info=True)
+        return False
+
+
 # Track users currently in ticket creation process
 users_in_process = set()
 
