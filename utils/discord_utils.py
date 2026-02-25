@@ -63,6 +63,15 @@ def load_config() -> Optional[dict]:
         return None
 
 
+# ============================================================================
+# Discord Rate Limit Safe Helper Functions
+# ============================================================================
+# These helpers wrap Discord API calls with automatic retry logic and
+# rate limit handling to prevent the bot from crashing or timing out.
+# Use these instead of direct interaction.response/followup calls when possible.
+# ============================================================================
+
+
 async def safe_interaction_response(interaction: Interaction, *args, **kwargs) -> bool:
     """
     Safely send an interaction response with rate limit handling.
@@ -172,6 +181,42 @@ async def safe_defer(interaction: Interaction, ephemeral: bool = False) -> bool:
         return False
 
 
+async def safe_channel_edit(channel, **kwargs) -> bool:
+    """
+    Safely edit a channel with rate limit and retry handling.
+    Returns True if successful, False otherwise.
+    """
+    max_retries = 3
+    retry_delay = 1
+
+    for attempt in range(max_retries):
+        try:
+            await channel.edit(**kwargs)
+            return True
+        except discord.errors.HTTPException as e:
+            if e.status == 429:  # Rate limited
+                # Extract retry_after from the error if available
+                retry_after = getattr(e, "retry_after", retry_delay * (2**attempt))
+                logger.warning(
+                    f"Rate limited when editing channel {channel.name}. "
+                    f"Retry after {retry_after}s (attempt {attempt + 1}/{max_retries})"
+                )
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(min(retry_after, 60))  # Cap at 60 seconds
+                    continue
+                else:
+                    logger.error(f"Failed to edit channel after {max_retries} attempts")
+                    return False
+            else:
+                logger.error(f"HTTP error editing channel: {e}", exc_info=True)
+                return False
+        except Exception as e:
+            logger.error(f"Unexpected error editing channel: {e}", exc_info=True)
+            return False
+
+    return False
+
+
 # Track users currently in ticket creation process
 users_in_process = set()
 
@@ -209,16 +254,16 @@ class TicketButton(discord.ui.Button):
         # Always use the main guild for ticket creation
         main_guild_id = self.config.get("main_guild_id")
         if not main_guild_id:
-            await interaction.response.send_message(
-                "Main guild ID not configured.", ephemeral=True
+            await safe_interaction_response(
+                interaction, "Main guild ID not configured.", ephemeral=True
             )
             logger.error("Main guild ID not configured in config.json")
             return
 
         guild = self.bot.get_guild(main_guild_id)
         if not guild:
-            await interaction.response.send_message(
-                "Could not access the main guild.", ephemeral=True
+            await safe_interaction_response(
+                interaction, "Could not access the main guild.", ephemeral=True
             )
             logger.error(f"Bot cannot access guild with ID {main_guild_id}")
             return
@@ -240,9 +285,8 @@ class TicketButton(discord.ui.Button):
             guild, user, self.ticket_type
         )
         if existing_ticket:
-            await interaction.response.send_message(
-                f"You already have an open ticket.",
-                ephemeral=True,
+            await safe_interaction_response(
+                interaction, f"You already have an open ticket.", ephemeral=True
             )
             logger.info(
                 f"User {user.name} tried to create duplicate {self.ticket_type} ticket"
@@ -253,7 +297,8 @@ class TicketButton(discord.ui.Button):
         users_in_process.add(user.id)
 
         # Acknowledge the interaction
-        await interaction.response.send_message(
+        await safe_interaction_response(
+            interaction,
             f"✅ Starting {self.ticket_type} ticket process. Check your DMs!",
             ephemeral=True,
         )
@@ -1012,7 +1057,17 @@ class TicketTypeSelect(discord.ui.Select):
                 new_category = guild.get_channel(new_category_id)
 
             # Apply all overwrites at once to replace old permissions and move to new category
-            await channel.edit(overwrites=overwrites, category=new_category)
+            edit_success = await safe_channel_edit(
+                channel, overwrites=overwrites, category=new_category
+            )
+            if not edit_success:
+                logger.error("Failed to edit channel due to rate limits or errors")
+                await safe_followup_send(
+                    interaction,
+                    "Failed to update channel due to rate limiting. Please try again in a moment.",
+                    ephemeral=True,
+                )
+                return
         except Exception as e:
             logger.error(
                 f"Failed to update channel permissions or move category: {e}",
@@ -1045,10 +1100,11 @@ class TicketTypeSelect(discord.ui.Select):
         name_parts = old_name.split("-", 1)
         if len(name_parts) > 1:
             new_name = f"{emoji}-{name_parts[1]}"
-            try:
-                await channel.edit(name=new_name)
-            except Exception as e:
-                logger.warning(f"Failed to update channel name: {e}")
+            edit_success = await safe_channel_edit(channel, name=new_name)
+            if not edit_success:
+                logger.warning(
+                    f"Failed to update channel name due to rate limits or errors"
+                )
 
         # Update channel topic metadata
         if channel.topic and channel.topic.startswith("{"):
@@ -1074,7 +1130,13 @@ class TicketTypeSelect(discord.ui.Select):
 
                 # 5 second delay
                 await asyncio.sleep(5)
-                await channel.edit(topic=json.dumps(ticket_metadata))
+                edit_success = await safe_channel_edit(
+                    channel, topic=json.dumps(ticket_metadata)
+                )
+                if not edit_success:
+                    logger.warning(
+                        "Failed to update channel topic due to rate limits or errors"
+                    )
             except Exception as e:
                 logger.warning(f"Failed to update channel topic: {e}", exc_info=True)
 
@@ -1320,32 +1382,39 @@ class DiscordCommands(commands.Cog):
         """Mark a ticket as awaiting response from the user"""
         try:
             # Defer early to avoid interaction timeout issues
-            await interaction.response.defer(ephemeral=True)
+            if not await safe_defer(interaction, ephemeral=True):
+                logger.error("Failed to defer interaction in mark_awaiting_response")
+                return
 
             channel = interaction.channel
 
             # Parse ticket metadata
             if not channel.topic or not channel.topic.startswith("{"):
-                await interaction.followup.send(
-                    "This channel does not have valid ticket metadata.", ephemeral=True
+                await safe_followup_send(
+                    interaction,
+                    "This channel does not have valid ticket metadata.",
+                    ephemeral=True,
                 )
                 return
 
             try:
                 ticket_metadata = json.loads(channel.topic)
             except json.JSONDecodeError:
-                await interaction.followup.send(
-                    "Failed to parse ticket metadata.", ephemeral=True
+                await safe_followup_send(
+                    interaction, "Failed to parse ticket metadata.", ephemeral=True
                 )
                 return
 
             if not ticket_metadata.get("ticket_config", {}):
-                await interaction.followup.send(
-                    "This channel does not have valid ticket metadata.", ephemeral=True
+                await safe_followup_send(
+                    interaction,
+                    "This channel does not have valid ticket metadata.",
+                    ephemeral=True,
                 )
                 return
             elif ticket_metadata["ticket_config"].get("awaiting_response", False):
-                await interaction.followup.send(
+                await safe_followup_send(
+                    interaction,
                     "This ticket is already marked as awaiting response.",
                     ephemeral=True,
                 )
@@ -1362,7 +1431,8 @@ class DiscordCommands(commands.Cog):
                 awaiting_response_category_id
             )
             if not awaiting_response_category:
-                await interaction.followup.send(
+                await safe_followup_send(
+                    interaction,
                     "Awaiting response category not found. Please contact an administrator.",
                     ephemeral=True,
                 )
@@ -1373,14 +1443,16 @@ class DiscordCommands(commands.Cog):
 
             # Validate channel types
             if not isinstance(channel, discord.TextChannel):
-                await interaction.followup.send(
+                await safe_followup_send(
+                    interaction,
                     "This command can only be used in a text channel.",
                     ephemeral=True,
                 )
                 return
 
             if not isinstance(awaiting_response_category, discord.CategoryChannel):
-                await interaction.followup.send(
+                await safe_followup_send(
+                    interaction,
                     "Awaiting response category is not a valid category.",
                     ephemeral=True,
                 )
@@ -1390,10 +1462,22 @@ class DiscordCommands(commands.Cog):
                 return
 
             # Update channel topic with new metadata and move to awaiting category
-            await channel.edit(
+            edit_success = await safe_channel_edit(
+                channel,
                 category=awaiting_response_category,
                 topic=json.dumps(ticket_metadata),
             )
+
+            if not edit_success:
+                await safe_followup_send(
+                    interaction,
+                    "Failed to move ticket due to rate limiting. Please try again in a moment.",
+                    ephemeral=True,
+                )
+                logger.error(
+                    f"Failed to edit channel {channel.name} due to rate limits or errors"
+                )
+                return
 
             # Notify in channel
             timeout = self.config.get("awaiting_response_timeout", 48)
@@ -1403,8 +1487,8 @@ class DiscordCommands(commands.Cog):
             )
 
             # Acknowledge the interaction
-            await interaction.followup.send(
-                "✅ Ticket marked as awaiting response.", ephemeral=True
+            await safe_followup_send(
+                interaction, "✅ Ticket marked as awaiting response.", ephemeral=True
             )
             logger.info(
                 f"Ticket {channel.name} marked as awaiting response by {interaction.user.name}"
@@ -1416,7 +1500,8 @@ class DiscordCommands(commands.Cog):
                 exc_info=True,
             )
             try:
-                await interaction.followup.send(
+                await safe_followup_send(
+                    interaction,
                     "An unexpected error occurred. Please contact an administrator.",
                     ephemeral=True,
                 )
