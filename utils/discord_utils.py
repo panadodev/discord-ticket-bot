@@ -1237,16 +1237,21 @@ class DiscordCommands(commands.Cog):
                 return
             elif ticket_metadata["ticket_config"].get("awaiting_response", False):
                 await interaction.followup.send(
-                    "This ticket is already marked as awaiting response.", ephemeral=True
+                    "This ticket is already marked as awaiting response.",
+                    ephemeral=True,
                 )
                 return
 
             # Set awaiting response flags with timestamp
             ticket_metadata["ticket_config"]["awaiting_response"] = True
-            ticket_metadata["ticket_config"]["awaiting_response_set_at"] = int(time.time())
+            ticket_metadata["ticket_config"]["awaiting_response_set_at"] = int(
+                time.time()
+            )
 
             awaiting_response_category_id = self.config["awaiting_response_category"]
-            awaiting_response_category = self.bot.get_channel(awaiting_response_category_id)
+            awaiting_response_category = self.bot.get_channel(
+                awaiting_response_category_id
+            )
             if not awaiting_response_category:
                 await interaction.followup.send(
                     "Awaiting response category not found. Please contact an administrator.",
@@ -1322,68 +1327,74 @@ class TicketResponseTimeoutHandler(commands.Cog):
         try:
             logger.info("Checking for tickets marked as awaiting response...")
             awaiting_response_category_id = self.config["awaiting_response_category"]
-            awaiting_response_category = self.bot.get_channel(awaiting_response_category_id)
+            awaiting_response_category = self.bot.get_channel(
+                awaiting_response_category_id
+            )
             if not awaiting_response_category:
                 logger.error(
                     f"Awaiting response category with ID {awaiting_response_category_id} not found"
                 )
                 return
             for channel in awaiting_response_category.text_channels:
-            try:
-                if channel.topic and channel.topic.startswith("{"):
-                    ticket_metadata = json.loads(channel.topic)
-                    if (
-                        ticket_metadata["ticket_config"].get("awaiting_response", False)
-                        and "awaiting_response_set_at"
-                        in ticket_metadata["ticket_config"]
-                    ):
-                        awaiting_response_set_at = ticket_metadata["ticket_config"][
-                            "awaiting_response_set_at"
-                        ]
-                        timeout_hours = self.config.get("awaiting_response_timeout", 48)
+                try:
+                    if channel.topic and channel.topic.startswith("{"):
+                        ticket_metadata = json.loads(channel.topic)
                         if (
-                            time.time()
-                            > awaiting_response_set_at + timeout_hours * 3600
+                            ticket_metadata["ticket_config"].get(
+                                "awaiting_response", False
+                            )
+                            and "awaiting_response_set_at"
+                            in ticket_metadata["ticket_config"]
                         ):
-                            logger.info(
-                                f"Ticket {channel.name} has exceeded awaiting response timeout, closing ticket..."
+                            awaiting_response_set_at = ticket_metadata["ticket_config"][
+                                "awaiting_response_set_at"
+                            ]
+                            timeout_hours = self.config.get(
+                                "awaiting_response_timeout", 48
                             )
-                            # Generate transcript before deletion
-                            transcript_result = await DiscordTranscript.export(
-                                channel, bot=self.bot
-                            )
+                            if (
+                                time.time()
+                                > awaiting_response_set_at + timeout_hours * 3600
+                            ):
+                                logger.info(
+                                    f"Ticket {channel.name} has exceeded awaiting response timeout, closing ticket..."
+                                )
+                                # Generate transcript before deletion
+                                transcript_result = await DiscordTranscript.export(
+                                    channel, bot=self.bot
+                                )
 
-                            # Delete the channel
-                            await channel.delete()
+                                # Delete the channel
+                                await channel.delete()
 
-                            # Send transcript to log channel
-                            log_channel_id = ticket_metadata["ticket_config"].get(
-                                "log_channel"
-                            )
-                            if log_channel_id and transcript_result:
-                                log_ch = self.bot.get_channel(log_channel_id)
-                                if log_ch:
-                                    transcript_file = discord.File(
-                                        io.BytesIO(transcript_result.encode()),
-                                        filename=f"transcript-{channel.name}.html",
-                                    )
-                                    now = int(discord.utils.utcnow().timestamp())
-                                    log_message = truncate_text(
-                                        f"<t:{now}:R> {channel.name} \n Ticket was closed due to no response received within {timeout_hours} hours.",
-                                        DISCORD_MESSAGE_LIMIT,
-                                    )
-                                    await log_ch.send(
-                                        content=log_message,
-                                        file=transcript_file,
-                                    )
-                                    logger.info(
-                                        f"Sent transcript for {channel.name} to log channel after awaiting response timeout"
-                                    )
-            except Exception as e:
-                logger.error(
-                    f"Error checking awaiting response ticket {channel.name}: {e}",
-                    exc_info=True,
-                )
+                                # Send transcript to log channel
+                                log_channel_id = ticket_metadata["ticket_config"].get(
+                                    "log_channel"
+                                )
+                                if log_channel_id and transcript_result:
+                                    log_ch = self.bot.get_channel(log_channel_id)
+                                    if log_ch:
+                                        transcript_file = discord.File(
+                                            io.BytesIO(transcript_result.encode()),
+                                            filename=f"transcript-{channel.name}.html",
+                                        )
+                                        now = int(discord.utils.utcnow().timestamp())
+                                        log_message = truncate_text(
+                                            f"<t:{now}:R> {channel.name} \\n Ticket was closed due to no response received within {timeout_hours} hours.",
+                                            DISCORD_MESSAGE_LIMIT,
+                                        )
+                                        await log_ch.send(
+                                            content=log_message,
+                                            file=transcript_file,
+                                        )
+                                        logger.info(
+                                            f"Sent transcript for {channel.name} to log channel after awaiting response timeout"
+                                        )
+                except Exception as e:
+                    logger.error(
+                        f"Error checking awaiting response ticket {channel.name}: {e}",
+                        exc_info=True,
+                    )
         except Exception as e:
             logger.error(
                 f"Critical error in check_awaiting_response_tickets loop: {e}",
