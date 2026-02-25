@@ -5,13 +5,12 @@ import logging
 import os
 import re
 import time
-from asyncio import tasks
 from typing import Optional
 
 import discord
 import DiscordTranscript
 from discord import Interaction, app_commands
-from discord.ext import commands
+from discord.ext import commands, tasks
 from dotenv import load_dotenv
 
 from utils.sql_utils import DatabaseOperations
