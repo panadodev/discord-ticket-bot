@@ -1517,7 +1517,7 @@ class TicketResponseTimeoutHandler(commands.Cog):
         self.config = load_config()
 
     @tasks.loop(minutes=10)
-    # if no response is received within the specified timeout, close the ticket and send the transcript in the logs channel but do not log to the database since the ticket was never actually responded to
+    # if no response is received within the specified timeout, close the ticket and send the transcript in the logs channel and log the ticket in the database
     async def check_awaiting_response_tickets(self):
         try:
             logger.info("Checking for tickets marked as awaiting response...")
@@ -1557,6 +1557,23 @@ class TicketResponseTimeoutHandler(commands.Cog):
                                 # Generate transcript before deletion
                                 transcript_result = await DiscordTranscript.export(
                                     channel, bot=self.bot
+                                )
+                                # Log the ticket in the database with closed_by as the bot and transcript
+                                ticket_owner_id = ticket_metadata["ticket_config"][
+                                    "ticket_owner_id"
+                                ]
+                                await DatabaseOperations.log_tickets(
+                                    origin_org_guild=ticket_metadata["ticket_config"][
+                                        "origin_org_guild"
+                                    ],
+                                    ticket_type=ticket_metadata["ticket_config"][
+                                        "ticket_type"
+                                    ],
+                                    transcript=transcript_result,
+                                    closed_by=self.bot.user.id,
+                                    opened_by=ticket_owner_id,
+                                    made_at=ticket_metadata["ticket_config"]["made_at"],
+                                    created_by=ticket_owner_id,
                                 )
 
                                 # Delete the channel
