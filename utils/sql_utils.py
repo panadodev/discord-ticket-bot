@@ -33,7 +33,7 @@ class tickets(Model):
 
 class staff_response_count(Model):
     class Meta:
-        table = "staff_actions"
+        table = "staff_response_count"
 
     user_id = fields.BigIntField(pk=True)
     response_count = fields.IntField(default=0)
