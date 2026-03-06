@@ -31,6 +31,16 @@ class tickets(Model):
     created = fields.IntField(null=False)
 
 
+class staff_response_count(Model):
+    class Meta:
+        table = "staff_actions"
+
+    user_id = fields.BigIntField(pk=True)
+    response_count = fields.IntField(default=0)
+    hidden_response_count = fields.IntField(default=0)
+    last_response_time = fields.IntField(default=0)
+
+
 # SQL :
 class DatabaseOperations:
 
@@ -77,8 +87,7 @@ class DatabaseOperations:
         ).count()
 
         return count
-    
-    
+
     @staticmethod
     async def average_respond_times():
         """
@@ -93,31 +102,51 @@ class DatabaseOperations:
             }
             },
         "org_b": {
-        
+
         },
         """
         results = {}
         orgs = await tickets.all().distinct().values_list("origin_org_guild", flat=True)
-        
+
         for org in orgs:
             results[org] = {}
-            ticket_types = await tickets.filter(origin_org_guild=org).distinct().values_list("ticket_type", flat=True)
-            
+            ticket_types = (
+                await tickets.filter(origin_org_guild=org)
+                .distinct()
+                .values_list("ticket_type", flat=True)
+            )
+
             for t_type in ticket_types:
                 response_times = await tickets.filter(
-                    origin_org_guild=org,
-                    ticket_type=t_type
+                    origin_org_guild=org, ticket_type=t_type
                 ).values_list("created", "made_at")
-                
-                total_response_time = sum(created - made_at for created, made_at in response_times)
+
+                total_response_time = sum(
+                    created - made_at for created, made_at in response_times
+                )
                 ticket_count = len(response_times)
-                
-                average_response_time = total_response_time / ticket_count if ticket_count > 0 else 0
-                
+
+                average_response_time = (
+                    total_response_time / ticket_count if ticket_count > 0 else 0
+                )
+
                 results[org][t_type] = {
                     "average_response_time": average_response_time,
-                    "ticket_count": ticket_count
+                    "ticket_count": ticket_count,
                 }
-        
+
         return results
-        
+
+    @staticmethod
+    async def update_staff_response_count(user_id: int, hidden: bool):
+        staff = await staff_response_count.get_or_none(user_id=user_id)
+        if not staff:
+            staff = await staff_response_count.create(user_id=user_id)
+
+        if hidden:
+            staff.hidden_response_count += 1
+        else:
+            staff.response_count += 1
+
+        staff.last_response_time = int(time.time())
+        await staff.save()

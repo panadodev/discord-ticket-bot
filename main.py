@@ -26,6 +26,7 @@ from utils.discord_utils import (
     TicketSupportEmbedManager,
     truncate_text,
 )
+from utils.sql_utils import DatabaseOperations, staff_response_count
 
 # Load environment variables
 load_dotenv()
@@ -456,12 +457,18 @@ async def on_message(message: discord.Message):
                 embed.set_author(
                     name=truncate_text("Staff Member", DISCORD_EMBED_TITLE_LIMIT)
                 )
+                await DatabaseOperations.update_staff_response_count(
+                    message.author.id, hidden=True
+                )
             else:
                 embed.set_author(
                     name=truncate_text(
                         message.author.global_name, DISCORD_EMBED_TITLE_LIMIT
                     ),
                     icon_url=message.author.display_avatar.url,
+                )
+                await DatabaseOperations.update_staff_response_count(
+                    message.author.id, hidden=False
                 )
 
             # Handle attachments
