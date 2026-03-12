@@ -1560,11 +1560,11 @@ class TicketResponseTimeoutHandler(commands.Cog):
                                 )
                                 # Log the ticket in the database with closed_by as the bot and transcript
                                 ticket_owner_id = ticket_metadata["ticket_config"][
-                                    "ticket_owner_id"
+                                    "created_by"
                                 ]
                                 await DatabaseOperations.log_tickets(
                                     origin_org_guild=ticket_metadata["ticket_config"][
-                                        "origin_org_guild"
+                                        "ticket_from_guild"
                                     ],
                                     ticket_type=ticket_metadata["ticket_config"][
                                         "ticket_type"
@@ -1572,7 +1572,9 @@ class TicketResponseTimeoutHandler(commands.Cog):
                                     transcript=transcript_result,
                                     closed_by=self.bot.user.id,
                                     opened_by=ticket_owner_id,
-                                    made_at=ticket_metadata["ticket_config"]["made_at"],
+                                    made_at=ticket_metadata["ticket_config"][
+                                        "created_at"
+                                    ],
                                     created_by=ticket_owner_id,
                                 )
 
