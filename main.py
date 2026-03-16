@@ -432,6 +432,12 @@ async def on_message(message: discord.Message):
             logger.debug("Message does not start with !r or !rm; ignoring.")
             return
 
+        # Provide usage guidance when reply command is sent without content or files.
+        if not message_content and not message.attachments:
+            usage_message = "Usage: `!r <message>` to reply or with attachments."
+            await message.channel.send(usage_message)
+            return
+
         # Forward to ticket owner's DM
         try:
             ticket_owner = await bot.fetch_user(ticket_owner_id)
