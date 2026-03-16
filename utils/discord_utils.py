@@ -1515,7 +1515,7 @@ class DiscordCommands(commands.Cog):
     @app_commands.command(name="staff_performance")
     @app_commands.describe()
     async def staff_performance(self, interaction: Interaction) -> None:
-        """Get staff performance stats for the command user"""
+        """Get staff performance stats for all staff members"""
         await interaction.response.defer(ephemeral=True)
 
         if not self.config:
@@ -1550,78 +1550,107 @@ class DiscordCommands(commands.Cog):
                 return
 
         try:
-            staff_tickets_stats = await DatabaseOperations.count_staff_responses(
-                interaction.user.id
-            )
+            all_staff_stats = await DatabaseOperations.get_all_staff_performance()
 
-            if not staff_tickets_stats:
+            if not all_staff_stats:
                 await interaction.followup.send(
-                    "No staff response data found for this user.",
+                    "No staff performance data found.",
                     ephemeral=True,
                 )
                 return
 
-            embed = discord.Embed(
-                title=truncate_text("🏆 Staff Performance", DISCORD_EMBED_TITLE_LIMIT),
-                description=truncate_text(
-                    f"Performance stats for {interaction.user.mention}",
-                    DISCORD_EMBED_DESCRIPTION_LIMIT,
-                ),
-                color=discord.Color.gold(),
-            )
+            # Send an embed for each staff member
+            for staff_data in all_staff_stats:
+                user_id = staff_data["user_id"]
 
-            embed.add_field(
-                name=truncate_text(
-                    "🎫 Tickets Handled", DISCORD_EMBED_FIELD_NAME_LIMIT
-                ),
-                value=truncate_text(
-                    str(staff_tickets_stats.get("tickets_handled", 0)),
-                    DISCORD_EMBED_FIELD_VALUE_LIMIT,
-                ),
-                inline=True,
-            )
-            embed.add_field(
-                name=truncate_text(
-                    "📅 Tickets (Last 30 Days)", DISCORD_EMBED_FIELD_NAME_LIMIT
-                ),
-                value=truncate_text(
-                    str(staff_tickets_stats.get("tickets_last_30_days", 0)),
-                    DISCORD_EMBED_FIELD_VALUE_LIMIT,
-                ),
-                inline=True,
-            )
-            embed.add_field(
-                name=truncate_text(
-                    "🙈 Hidden Responses", DISCORD_EMBED_FIELD_NAME_LIMIT
-                ),
-                value=truncate_text(
-                    str(staff_tickets_stats.get("hidden_message_responses", 0)),
-                    DISCORD_EMBED_FIELD_VALUE_LIMIT,
-                ),
-                inline=True,
-            )
-            embed.add_field(
-                name=truncate_text(
-                    "💬 Visible Responses", DISCORD_EMBED_FIELD_NAME_LIMIT
-                ),
-                value=truncate_text(
-                    str(staff_tickets_stats.get("visible_message_responses", 0)),
-                    DISCORD_EMBED_FIELD_VALUE_LIMIT,
-                ),
-                inline=True,
-            )
+                # Try to fetch user from Discord
+                try:
+                    user = await self.bot.fetch_user(user_id)
+                    user_mention = user.mention
+                    user_name = user.name
+                except Exception:
+                    user_mention = f"<@{user_id}>"
+                    user_name = f"User {user_id}"
 
-            last_ticket_id = staff_tickets_stats.get("last_ticket")
-            embed.add_field(
-                name=truncate_text("🧾 Last Ticket ID", DISCORD_EMBED_FIELD_NAME_LIMIT),
-                value=truncate_text(
-                    str(last_ticket_id) if last_ticket_id is not None else "None",
-                    DISCORD_EMBED_FIELD_VALUE_LIMIT,
-                ),
-                inline=True,
-            )
+                embed = discord.Embed(
+                    title=truncate_text(
+                        f"Staff Performance - {user_name}", DISCORD_EMBED_TITLE_LIMIT
+                    ),
+                    description=truncate_text(
+                        f"Performance stats for {user_mention}",
+                        DISCORD_EMBED_DESCRIPTION_LIMIT,
+                    ),
+                    color=discord.Color.gold(),
+                )
 
-            await interaction.followup.send(embed=embed, ephemeral=True)
+                embed.add_field(
+                    name=truncate_text(
+                        "Tickets Closed", DISCORD_EMBED_FIELD_NAME_LIMIT
+                    ),
+                    value=truncate_text(
+                        str(staff_data["tickets_closed"]),
+                        DISCORD_EMBED_FIELD_VALUE_LIMIT,
+                    ),
+                    inline=True,
+                )
+
+                # Last closed ticket timestamp
+                last_ticket_time = staff_data["last_ticket_time"]
+                if last_ticket_time:
+                    last_ticket_str = f"<t:{last_ticket_time}:R>"
+                else:
+                    last_ticket_str = "Never"
+
+                embed.add_field(
+                    name=truncate_text(
+                        "Last Ticket Closed", DISCORD_EMBED_FIELD_NAME_LIMIT
+                    ),
+                    value=truncate_text(
+                        last_ticket_str,
+                        DISCORD_EMBED_FIELD_VALUE_LIMIT,
+                    ),
+                    inline=True,
+                )
+
+                # Last message timestamp
+                last_message_time = staff_data["last_message_time"]
+                if last_message_time and last_message_time > 0:
+                    last_message_str = f"<t:{last_message_time}:R>"
+                else:
+                    last_message_str = "Never"
+
+                embed.add_field(
+                    name=truncate_text("Last Message", DISCORD_EMBED_FIELD_NAME_LIMIT),
+                    value=truncate_text(
+                        last_message_str,
+                        DISCORD_EMBED_FIELD_VALUE_LIMIT,
+                    ),
+                    inline=True,
+                )
+
+                embed.add_field(
+                    name=truncate_text(
+                        "Visible Responses", DISCORD_EMBED_FIELD_NAME_LIMIT
+                    ),
+                    value=truncate_text(
+                        str(staff_data["visible_message_responses"]),
+                        DISCORD_EMBED_FIELD_VALUE_LIMIT,
+                    ),
+                    inline=True,
+                )
+
+                embed.add_field(
+                    name=truncate_text(
+                        "Hidden Responses", DISCORD_EMBED_FIELD_NAME_LIMIT
+                    ),
+                    value=truncate_text(
+                        str(staff_data["hidden_message_responses"]),
+                        DISCORD_EMBED_FIELD_VALUE_LIMIT,
+                    ),
+                    inline=True,
+                )
+
+                await interaction.followup.send(embed=embed, ephemeral=True)
 
         except Exception as e:
             logger.error(f"Error fetching staff performance data: {e}", exc_info=True)

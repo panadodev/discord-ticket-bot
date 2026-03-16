@@ -181,3 +181,38 @@ class DatabaseOperations:
                 staff_record.response_count if staff_record else 0
             ),
         }
+
+    @staticmethod
+    async def get_all_staff_performance():
+        """Get performance stats for all staff members"""
+        all_staff = await staff_response_count.all()
+        staff_stats = []
+
+        for staff_member in all_staff:
+            user_id = staff_member.user_id
+
+            # Count tickets closed by this staff member
+            total_tickets_closed = await tickets.filter(closed_by=user_id).count()
+
+            # Get last closed ticket
+            last_closed_ticket = (
+                await tickets.filter(closed_by=user_id).order_by("-created").first()
+            )
+
+            staff_stats.append(
+                {
+                    "user_id": user_id,
+                    "tickets_closed": total_tickets_closed,
+                    "last_ticket_time": (
+                        last_closed_ticket.created if last_closed_ticket else None
+                    ),
+                    "last_message_time": staff_member.last_response_time,
+                    "hidden_message_responses": staff_member.hidden_response_count,
+                    "visible_message_responses": staff_member.response_count,
+                }
+            )
+
+        # Sort by tickets closed (descending)
+        staff_stats.sort(key=lambda x: x["tickets_closed"], reverse=True)
+
+        return staff_stats
