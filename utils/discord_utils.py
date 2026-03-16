@@ -1506,9 +1506,129 @@ class DiscordCommands(commands.Cog):
                     "An unexpected error occurred. Please contact an administrator.",
                     ephemeral=True,
                 )
-            except:
+            except Exception as send_error:
                 # If we can't even send the followup, just log it
-                logger.error("Failed to send error message to user")
+                logger.error(
+                    f"Failed to send error message to user: {send_error}", exc_info=True
+                )
+
+    @app_commands.command(name="staff_performance")
+    @app_commands.describe()
+    async def staff_performance(self, interaction: Interaction) -> None:
+        """Get staff performance stats for the command user"""
+        await interaction.response.defer(ephemeral=True)
+
+        if not self.config:
+            await interaction.followup.send(
+                "Configuration not loaded. Please contact an administrator.",
+                ephemeral=True,
+            )
+            logger.error("Config not loaded in staff_performance")
+            return
+
+        # check if management
+        if not interaction.guild or interaction.guild.id != self.config.get(
+            "main_guild_id"
+        ):
+            await interaction.followup.send(
+                "This command can only be used in the main server.", ephemeral=True
+            )
+            return
+
+        # check user is management
+        management_role_id = self.config.get("management_role_id")
+        if management_role_id:
+            member = (
+                interaction.user
+                if isinstance(interaction.user, discord.Member)
+                else interaction.guild.get_member(interaction.user.id)
+            )
+            if not member or member.get_role(management_role_id) is None:
+                await interaction.followup.send(
+                    "You do not have permission to use this command.", ephemeral=True
+                )
+                return
+
+        try:
+            staff_tickets_stats = await DatabaseOperations.count_staff_responses(
+                interaction.user.id
+            )
+
+            if not staff_tickets_stats:
+                await interaction.followup.send(
+                    "No staff response data found for this user.",
+                    ephemeral=True,
+                )
+                return
+
+            embed = discord.Embed(
+                title=truncate_text("🏆 Staff Performance", DISCORD_EMBED_TITLE_LIMIT),
+                description=truncate_text(
+                    f"Performance stats for {interaction.user.mention}",
+                    DISCORD_EMBED_DESCRIPTION_LIMIT,
+                ),
+                color=discord.Color.gold(),
+            )
+
+            embed.add_field(
+                name=truncate_text(
+                    "🎫 Tickets Handled", DISCORD_EMBED_FIELD_NAME_LIMIT
+                ),
+                value=truncate_text(
+                    str(staff_tickets_stats.get("tickets_handled", 0)),
+                    DISCORD_EMBED_FIELD_VALUE_LIMIT,
+                ),
+                inline=True,
+            )
+            embed.add_field(
+                name=truncate_text(
+                    "📅 Tickets (Last 30 Days)", DISCORD_EMBED_FIELD_NAME_LIMIT
+                ),
+                value=truncate_text(
+                    str(staff_tickets_stats.get("tickets_last_30_days", 0)),
+                    DISCORD_EMBED_FIELD_VALUE_LIMIT,
+                ),
+                inline=True,
+            )
+            embed.add_field(
+                name=truncate_text(
+                    "🙈 Hidden Responses", DISCORD_EMBED_FIELD_NAME_LIMIT
+                ),
+                value=truncate_text(
+                    str(staff_tickets_stats.get("hidden_message_responses", 0)),
+                    DISCORD_EMBED_FIELD_VALUE_LIMIT,
+                ),
+                inline=True,
+            )
+            embed.add_field(
+                name=truncate_text(
+                    "💬 Visible Responses", DISCORD_EMBED_FIELD_NAME_LIMIT
+                ),
+                value=truncate_text(
+                    str(staff_tickets_stats.get("visible_message_responses", 0)),
+                    DISCORD_EMBED_FIELD_VALUE_LIMIT,
+                ),
+                inline=True,
+            )
+
+            last_ticket_id = staff_tickets_stats.get("last_ticket")
+            embed.add_field(
+                name=truncate_text("🧾 Last Ticket ID", DISCORD_EMBED_FIELD_NAME_LIMIT),
+                value=truncate_text(
+                    str(last_ticket_id) if last_ticket_id is not None else "None",
+                    DISCORD_EMBED_FIELD_VALUE_LIMIT,
+                ),
+                inline=True,
+            )
+
+            await interaction.followup.send(embed=embed, ephemeral=True)
+
+        except Exception as e:
+            logger.error(f"Error fetching staff performance data: {e}", exc_info=True)
+            await interaction.followup.send(
+                "An error occurred while fetching staff performance data.",
+                ephemeral=True,
+            )
 
 
 class TicketResponseTimeoutHandler(commands.Cog):

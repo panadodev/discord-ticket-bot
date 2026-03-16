@@ -150,3 +150,34 @@ class DatabaseOperations:
 
         staff.last_response_time = int(time.time())
         await staff.save()
+
+    @staticmethod
+    async def count_staff_responses(user_id: int):
+        staff_record = await staff_response_count.get_or_none(user_id=user_id)
+        total_tickets = await tickets.filter(opened_by=user_id).count()
+
+        now = int(time.time())
+        thirty_days_ago = now - (30 * 24 * 60 * 60)
+
+        tickets_last_30_days = await tickets.filter(
+            opened_by=user_id,
+            created__gte=thirty_days_ago,
+        ).count()
+
+        last_ticket = (
+            await tickets.filter(opened_by=user_id).order_by("-created").first()
+        )
+
+        # Return tickets handled, tickets in last 30 days, last ticket,
+        # hidden message responses, and visible message responses.
+        return {
+            "tickets_handled": total_tickets,
+            "tickets_last_30_days": tickets_last_30_days,
+            "last_ticket": last_ticket.id if last_ticket else None,
+            "hidden_message_responses": (
+                staff_record.hidden_response_count if staff_record else 0
+            ),
+            "visible_message_responses": (
+                staff_record.response_count if staff_record else 0
+            ),
+        }
