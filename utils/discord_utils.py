@@ -1572,45 +1572,12 @@ class DiscordCommands(commands.Cog):
                     user_mention = f"<@{user_id}>"
                     user_name = f"User {user_id}"
 
-                embed = discord.Embed(
-                    title=truncate_text(
-                        f"Staff Performance - {user_name}", DISCORD_EMBED_TITLE_LIMIT
-                    ),
-                    description=truncate_text(
-                        f"Performance stats for {user_mention}",
-                        DISCORD_EMBED_DESCRIPTION_LIMIT,
-                    ),
-                    color=discord.Color.gold(),
-                )
-
-                embed.add_field(
-                    name=truncate_text(
-                        "Tickets Closed", DISCORD_EMBED_FIELD_NAME_LIMIT
-                    ),
-                    value=truncate_text(
-                        str(staff_data["tickets_closed"]),
-                        DISCORD_EMBED_FIELD_VALUE_LIMIT,
-                    ),
-                    inline=True,
-                )
-
                 # Last closed ticket timestamp
                 last_ticket_time = staff_data["last_ticket_time"]
                 if last_ticket_time:
                     last_ticket_str = f"<t:{last_ticket_time}:R>"
                 else:
                     last_ticket_str = "Never"
-
-                embed.add_field(
-                    name=truncate_text(
-                        "Last Ticket Closed", DISCORD_EMBED_FIELD_NAME_LIMIT
-                    ),
-                    value=truncate_text(
-                        last_ticket_str,
-                        DISCORD_EMBED_FIELD_VALUE_LIMIT,
-                    ),
-                    inline=True,
-                )
 
                 # Last message timestamp
                 last_message_time = staff_data["last_message_time"]
@@ -1619,35 +1586,25 @@ class DiscordCommands(commands.Cog):
                 else:
                     last_message_str = "Never"
 
-                embed.add_field(
-                    name=truncate_text("Last Message", DISCORD_EMBED_FIELD_NAME_LIMIT),
-                    value=truncate_text(
-                        last_message_str,
-                        DISCORD_EMBED_FIELD_VALUE_LIMIT,
-                    ),
-                    inline=True,
+                # Build description with inline stats
+                description = (
+                    f"Performance stats for {user_mention}\n\n"
+                    f"**Tickets Closed**: `{staff_data['tickets_closed']}`\n"
+                    f"**Last Ticket Closed**: {last_ticket_str}\n"
+                    f"**Last Message**: {last_message_str}\n"
+                    f"**Visible Message Responses**: `{staff_data['visible_message_responses']}`\n"
+                    f"**Hidden Message Responses**: `{staff_data['hidden_message_responses']}`"
                 )
 
-                embed.add_field(
-                    name=truncate_text(
-                        "Visible Responses", DISCORD_EMBED_FIELD_NAME_LIMIT
+                embed = discord.Embed(
+                    title=truncate_text(
+                        f"Staff Performance - {user_name}", DISCORD_EMBED_TITLE_LIMIT
                     ),
-                    value=truncate_text(
-                        str(staff_data["visible_message_responses"]),
-                        DISCORD_EMBED_FIELD_VALUE_LIMIT,
+                    description=truncate_text(
+                        description,
+                        DISCORD_EMBED_DESCRIPTION_LIMIT,
                     ),
-                    inline=True,
-                )
-
-                embed.add_field(
-                    name=truncate_text(
-                        "Hidden Responses", DISCORD_EMBED_FIELD_NAME_LIMIT
-                    ),
-                    value=truncate_text(
-                        str(staff_data["hidden_message_responses"]),
-                        DISCORD_EMBED_FIELD_VALUE_LIMIT,
-                    ),
-                    inline=True,
+                    color=discord.Color.gold(),
                 )
 
                 await interaction.followup.send(embed=embed, ephemeral=True)
