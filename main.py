@@ -171,6 +171,13 @@ async def on_message(message: discord.Message):
     # Process commands first
     await bot.process_commands(message)
 
+    # React to greetings with a wave emoji
+    if message.content.lower().strip() in ["hi", "hello"]:
+        try:
+            await message.add_reaction("👋")
+        except Exception as e:
+            logger.warning(f"Failed to add reaction to greeting: {e}")
+
     # Import needed utilities
     from utils.discord_utils import find_user_ticket, load_config, users_in_process
 
