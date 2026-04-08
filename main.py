@@ -73,7 +73,7 @@ class TicketBot(commands.Bot):
 
 # Initialize Discord bot
 intents = discord.Intents.all()
-bot = TicketBot(command_prefix="", intents=intents)
+bot = TicketBot(command_prefix="", intents=intents, help_command=None)
 
 
 @bot.event
