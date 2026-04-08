@@ -69,7 +69,7 @@
                     ],
                     "questions": [
                         "Please provide the steam id/s of the user/s you are reporting (Not optional):",
-                        "On which server are they:",
+                        "On which server are they (Example: EU Casual, NA solo):",
                         "Why are they being reported:"
                     ],
                     "check_for_steamid_provided": true,
