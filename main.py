@@ -172,7 +172,7 @@ async def on_message(message: discord.Message):
     await bot.process_commands(message)
 
     # React to greetings with a wave emoji
-    if message.content.lower().strip() in ["hi", "hello"]:
+    if message.content.lower().strip() in ["hi", "hello", "good morning!"]:
         try:
             await message.add_reaction("👋")
         except Exception as e:
