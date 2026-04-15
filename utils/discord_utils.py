@@ -9,7 +9,7 @@ from typing import Optional
 
 import discord
 import DiscordTranscript
-from discord import Interaction, app_commands
+from discord import Interaction, app_commands, datetime
 from discord.ext import commands, tasks
 from dotenv import load_dotenv
 
@@ -273,6 +273,20 @@ class TicketButton(discord.ui.Button):
             await interaction.response.send_message(
                 "You are already in the middle of creating a ticket. Please complete or cancel that process first.",
                 ephemeral=True,
+            )
+            return
+
+        # Check if user is blacklisted
+        blacklist_status = await DatabaseOperations.get_blacklist_status(user.id)
+        if blacklist_status["is_blacklisted"]:
+            reason = blacklist_status.get("reason", "No reason provided")
+            await safe_interaction_response(
+                interaction,
+                f"You are not allowed to create tickets. Reason: {reason}",
+                ephemeral=True,
+            )
+            logger.info(
+                f"Blacklisted user {user.name} ({user.id}) attempted to create a ticket"
             )
             return
 
@@ -1613,6 +1627,177 @@ class DiscordCommands(commands.Cog):
             logger.error(f"Error fetching staff performance data: {e}", exc_info=True)
             await interaction.followup.send(
                 "An error occurred while fetching staff performance data.",
+                ephemeral=True,
+            )
+
+    @app_commands.command(name="add_to_blacklist")
+    @app_commands.describe(
+        user="The user to add to the blacklist",
+        reason="The reason for blacklisting this user",
+    )
+    async def add_to_blacklist(
+        self, interaction: Interaction, user: discord.User, reason: str
+    ) -> None:
+        """Add a user to the blacklist"""
+        await interaction.response.defer(ephemeral=True)
+
+        if not self.config:
+            await interaction.followup.send(
+                "Configuration not loaded. Please contact an administrator.",
+                ephemeral=True,
+            )
+            logger.error("Config not loaded in add_to_blacklist")
+            return
+
+        # Check if management
+        if not interaction.guild or interaction.guild.id != self.config.get(
+            "main_guild_id"
+        ):
+            await interaction.followup.send(
+                "This command can only be used in the main server.", ephemeral=True
+            )
+            return
+
+        # Check user is management
+        management_role_id = self.config.get("management_role_id")
+        if management_role_id:
+            member = (
+                interaction.user
+                if isinstance(interaction.user, discord.Member)
+                else interaction.guild.get_member(interaction.user.id)
+            )
+            if not member or member.get_role(management_role_id) is None:
+                await interaction.followup.send(
+                    "You do not have permission to use this command.", ephemeral=True
+                )
+                return
+
+        try:
+            # Add user to blacklist
+            await DatabaseOperations.add_to_blacklist(
+                user_id=user.id, reason=reason, blacklisted_by=interaction.user.id
+            )
+
+            embed = discord.Embed(
+                title=truncate_text("User Blacklisted", DISCORD_EMBED_TITLE_LIMIT),
+                description=truncate_text(
+                    f"{user.mention} has been added to the blacklist.",
+                    DISCORD_EMBED_DESCRIPTION_LIMIT,
+                ),
+                color=discord.Color.red(),
+            )
+            embed.add_field(
+                name=truncate_text("Reason", DISCORD_EMBED_FIELD_NAME_LIMIT),
+                value=truncate_text(reason, DISCORD_EMBED_FIELD_VALUE_LIMIT),
+                inline=False,
+            )
+            embed.add_field(
+                name=truncate_text("Blacklisted By", DISCORD_EMBED_FIELD_NAME_LIMIT),
+                value=truncate_text(
+                    interaction.user.mention, DISCORD_EMBED_FIELD_VALUE_LIMIT
+                ),
+                inline=False,
+            )
+
+            await interaction.followup.send(embed=embed, ephemeral=True)
+            logger.info(
+                f"User {user.name} ({user.id}) was blacklisted by "
+                f"{interaction.user.name} ({interaction.user.id}). Reason: {reason}"
+            )
+
+        except Exception as e:
+            logger.error(f"Error adding user to blacklist: {e}", exc_info=True)
+            await interaction.followup.send(
+                "An error occurred while adding the user to the blacklist.",
+                ephemeral=True,
+            )
+
+    @app_commands.command(name="remove_from_blacklist")
+    @app_commands.describe(user="The user to remove from the blacklist")
+    async def remove_from_blacklist(
+        self, interaction: Interaction, user: discord.User
+    ) -> None:
+        """Remove a user from the blacklist"""
+        await interaction.response.defer(ephemeral=True)
+
+        if not self.config:
+            await interaction.followup.send(
+                "Configuration not loaded. Please contact an administrator.",
+                ephemeral=True,
+            )
+            logger.error("Config not loaded in remove_from_blacklist")
+            return
+
+        # Check if management
+        if not interaction.guild or interaction.guild.id != self.config.get(
+            "main_guild_id"
+        ):
+            await interaction.followup.send(
+                "This command can only be used in the main server.", ephemeral=True
+            )
+            return
+
+        # Check user is management
+        management_role_id = self.config.get("management_role_id")
+        if management_role_id:
+            member = (
+                interaction.user
+                if isinstance(interaction.user, discord.Member)
+                else interaction.guild.get_member(interaction.user.id)
+            )
+            if not member or member.get_role(management_role_id) is None:
+                await interaction.followup.send(
+                    "You do not have permission to use this command.", ephemeral=True
+                )
+                return
+
+        try:
+            # Check if user is in blacklist first
+            blacklist_status = await DatabaseOperations.get_blacklist_status(user.id)
+            if not blacklist_status["is_blacklisted"]:
+                await interaction.followup.send(
+                    f"{user.mention} is not in the blacklist.",
+                    ephemeral=True,
+                )
+                return
+
+            # Remove user from blacklist
+            success = await DatabaseOperations.remove_from_blacklist(user.id)
+
+            if success:
+                embed = discord.Embed(
+                    title=truncate_text(
+                        "User Removed from Blacklist", DISCORD_EMBED_TITLE_LIMIT
+                    ),
+                    description=truncate_text(
+                        f"{user.mention} has been removed from the blacklist.",
+                        DISCORD_EMBED_DESCRIPTION_LIMIT,
+                    ),
+                    color=discord.Color.green(),
+                )
+                embed.add_field(
+                    name=truncate_text("Removed By", DISCORD_EMBED_FIELD_NAME_LIMIT),
+                    value=truncate_text(
+                        interaction.user.mention, DISCORD_EMBED_FIELD_VALUE_LIMIT
+                    ),
+                    inline=False,
+                )
+
+                await interaction.followup.send(embed=embed, ephemeral=True)
+                logger.info(
+                    f"User {user.name} ({user.id}) was removed from blacklist by "
+                    f"{interaction.user.name} ({interaction.user.id})"
+                )
+            else:
+                await interaction.followup.send(
+                    "Failed to remove user from blacklist.",
+                    ephemeral=True,
+                )
+
+        except Exception as e:
+            logger.error(f"Error removing user from blacklist: {e}", exc_info=True)
+            await interaction.followup.send(
+                "An error occurred while removing the user from the blacklist.",
                 ephemeral=True,
             )
 

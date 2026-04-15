@@ -41,6 +41,16 @@ class staff_response_count(Model):
     last_response_time = fields.IntField(default=0)
 
 
+class blacklist(Model):
+    class Meta:
+        table = "blacklist"
+
+    user_id = fields.BigIntField(pk=True)
+    reason = fields.TextField(null=True)
+    blacklisted_by = fields.BigIntField(null=False)
+    blacklisted_at = fields.IntField(null=False)
+
+
 # SQL :
 class DatabaseOperations:
 
@@ -216,3 +226,42 @@ class DatabaseOperations:
         staff_stats.sort(key=lambda x: x["tickets_closed"], reverse=True)
 
         return staff_stats
+
+    @staticmethod
+    async def get_blacklist_status(user_id: int):
+        record = await blacklist.get_or_none(user_id=user_id)
+        if record:
+            return {
+                "is_blacklisted": True,
+                "reason": record.reason,
+                "blacklisted_by": record.blacklisted_by,
+                "blacklisted_at": record.blacklisted_at,
+            }
+        else:
+            return {"is_blacklisted": False}
+
+    @staticmethod
+    async def add_to_blacklist(user_id: int, reason: str, blacklisted_by: int):
+        existing_record = await blacklist.get_or_none(user_id=user_id)
+        if existing_record:
+            existing_record.reason = reason
+            existing_record.blacklisted_by = blacklisted_by
+            existing_record.blacklisted_at = int(time.time())
+            await existing_record.save()
+            return existing_record
+        else:
+            new_record = await blacklist.create(
+                user_id=user_id,
+                reason=reason,
+                blacklisted_by=blacklisted_by,
+                blacklisted_at=int(time.time()),
+            )
+            return new_record
+
+    @staticmethod
+    async def remove_from_blacklist(user_id: int):
+        record = await blacklist.get_or_none(user_id=user_id)
+        if record:
+            await record.delete()
+            return True
+        return False
