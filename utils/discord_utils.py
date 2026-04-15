@@ -1658,13 +1658,12 @@ class DiscordCommands(commands.Cog):
             )
 
     @app_commands.command(name="add_to_blacklist")
-    @app_commands.guilds(discord.Object(id=868656215834624020))  # main_guild_id
     @app_commands.describe(
-        user="The user to add to the blacklist",
+        user_id="The Discord ID of the user to add to the blacklist",
         reason="The reason for blacklisting this user",
     )
     async def add_to_blacklist(
-        self, interaction: Interaction, user: discord.User, reason: str
+        self, interaction: Interaction, user_id: str, reason: str
     ) -> None:
         """Add a user to the blacklist"""
         await interaction.response.defer(ephemeral=True)
@@ -1677,10 +1676,11 @@ class DiscordCommands(commands.Cog):
             logger.error("Config not loaded in add_to_blacklist")
             return
 
-        # Check if in guild and user has ban_appeals permissions
-        if not interaction.guild:
+        # Check if command is used in main guild
+        main_guild_id = self.config.get("main_guild_id")
+        if not interaction.guild or interaction.guild.id != main_guild_id:
             await interaction.followup.send(
-                "This command can only be used in a server.", ephemeral=True
+                "This command can only be used in the main server.", ephemeral=True
             )
             return
 
@@ -1694,6 +1694,32 @@ class DiscordCommands(commands.Cog):
             await interaction.followup.send(
                 "You do not have permission to use this command.", ephemeral=True
             )
+            return
+
+        # Validate and convert user_id to integer
+        try:
+            target_user_id = int(user_id)
+        except ValueError:
+            await interaction.followup.send(
+                "Invalid user ID. Please provide a valid Discord user ID.",
+                ephemeral=True,
+            )
+            return
+
+        # Fetch the user
+        try:
+            user = await self.bot.fetch_user(target_user_id)
+        except discord.NotFound:
+            await interaction.followup.send(
+                "User not found. Please check the user ID and try again.",
+                ephemeral=True,
+            )
+            return
+        except discord.HTTPException as e:
+            await interaction.followup.send(
+                f"Failed to fetch user: {e}", ephemeral=True
+            )
+            logger.error(f"Failed to fetch user {target_user_id}: {e}")
             return
 
         # Prevent self-blacklisting
@@ -1757,10 +1783,11 @@ class DiscordCommands(commands.Cog):
             )
 
     @app_commands.command(name="remove_from_blacklist")
-    @app_commands.guilds(discord.Object(id=868656215834624020))  # main_guild_id
-    @app_commands.describe(user="The user to remove from the blacklist")
+    @app_commands.describe(
+        user_id="The Discord ID of the user to remove from the blacklist"
+    )
     async def remove_from_blacklist(
-        self, interaction: Interaction, user: discord.User
+        self, interaction: Interaction, user_id: str
     ) -> None:
         """Remove a user from the blacklist"""
         await interaction.response.defer(ephemeral=True)
@@ -1773,10 +1800,11 @@ class DiscordCommands(commands.Cog):
             logger.error("Config not loaded in remove_from_blacklist")
             return
 
-        # Check if in guild and user has ban_appeals permissions
-        if not interaction.guild:
+        # Check if command is used in main guild
+        main_guild_id = self.config.get("main_guild_id")
+        if not interaction.guild or interaction.guild.id != main_guild_id:
             await interaction.followup.send(
-                "This command can only be used in a server.", ephemeral=True
+                "This command can only be used in the main server.", ephemeral=True
             )
             return
 
@@ -1790,6 +1818,32 @@ class DiscordCommands(commands.Cog):
             await interaction.followup.send(
                 "You do not have permission to use this command.", ephemeral=True
             )
+            return
+
+        # Validate and convert user_id to integer
+        try:
+            target_user_id = int(user_id)
+        except ValueError:
+            await interaction.followup.send(
+                "Invalid user ID. Please provide a valid Discord user ID.",
+                ephemeral=True,
+            )
+            return
+
+        # Fetch the user
+        try:
+            user = await self.bot.fetch_user(target_user_id)
+        except discord.NotFound:
+            await interaction.followup.send(
+                "User not found. Please check the user ID and try again.",
+                ephemeral=True,
+            )
+            return
+        except discord.HTTPException as e:
+            await interaction.followup.send(
+                f"Failed to fetch user: {e}", ephemeral=True
+            )
+            logger.error(f"Failed to fetch user {target_user_id}: {e}")
             return
 
         try:
