@@ -279,10 +279,10 @@ class TicketButton(discord.ui.Button):
         # Check if user is blacklisted
         blacklist_status = await DatabaseOperations.get_blacklist_status(user.id)
         if blacklist_status["is_blacklisted"]:
-            reason = blacklist_status.get("reason", "No reason provided")
+            # reason = blacklist_status.get("reason", "No reason provided")
             await safe_interaction_response(
                 interaction,
-                f"You are not allowed to create tickets. Reason: {reason}",
+                f"You are not allowed to create tickets.",
                 ephemeral=True,
             )
             logger.info(
