@@ -9,7 +9,7 @@ from typing import Optional
 
 import discord
 import DiscordTranscript
-from discord import Interaction, app_commands, datetime
+from discord import Interaction, app_commands
 from discord.ext import commands, tasks
 from dotenv import load_dotenv
 
@@ -1191,6 +1191,33 @@ class DiscordCommands(commands.Cog):
             self.main_guild_id = None
             logger.error("Failed to load config in DiscordCommands")
 
+    def check_ban_appeals_permission(self, member: discord.Member) -> bool:
+        """Check if member has any of the ban_appeals has_perms roles"""
+        if not self.config:
+            return False
+
+        ban_appeals_config = (
+            self.config.get("orgs", {}).get("tickets", {}).get("ban_appeals", {})
+        )
+        has_perms = ban_appeals_config.get("has_perms", [])
+
+        # Get all org role mappings
+        orgs = self.config.get("orgs", {})
+
+        # Check each required permission role
+        for perm_key in has_perms:
+            # Look through all orgs to find the role ID
+            for org_name, org_data in orgs.items():
+                if org_name == "tickets":
+                    continue
+                roles = org_data.get("roles", {})
+                if perm_key in roles:
+                    role_id = roles[perm_key]
+                    if member.get_role(role_id) is not None:
+                        return True
+
+        return False
+
     @app_commands.command(name="assign")
     @app_commands.describe()
     async def assign_ticket(self, interaction: Interaction) -> None:
@@ -1631,6 +1658,7 @@ class DiscordCommands(commands.Cog):
             )
 
     @app_commands.command(name="add_to_blacklist")
+    @app_commands.guilds(discord.Object(id=868656215834624020))  # main_guild_id
     @app_commands.describe(
         user="The user to add to the blacklist",
         reason="The reason for blacklisting this user",
@@ -1649,39 +1677,54 @@ class DiscordCommands(commands.Cog):
             logger.error("Config not loaded in add_to_blacklist")
             return
 
-        # Check if management
-        if not interaction.guild or interaction.guild.id != self.config.get(
-            "main_guild_id"
-        ):
+        # Check if in guild and user has ban_appeals permissions
+        if not interaction.guild:
             await interaction.followup.send(
-                "This command can only be used in the main server.", ephemeral=True
+                "This command can only be used in a server.", ephemeral=True
             )
             return
 
-        # Check user is management
-        management_role_id = self.config.get("management_role_id")
-        if management_role_id:
-            member = (
-                interaction.user
-                if isinstance(interaction.user, discord.Member)
-                else interaction.guild.get_member(interaction.user.id)
+        member = (
+            interaction.user
+            if isinstance(interaction.user, discord.Member)
+            else interaction.guild.get_member(interaction.user.id)
+        )
+
+        if not member or not self.check_ban_appeals_permission(member):
+            await interaction.followup.send(
+                "You do not have permission to use this command.", ephemeral=True
             )
-            if not member or member.get_role(management_role_id) is None:
-                await interaction.followup.send(
-                    "You do not have permission to use this command.", ephemeral=True
-                )
-                return
+            return
+
+        # Prevent self-blacklisting
+        if user.id == interaction.user.id:
+            await interaction.followup.send(
+                "You cannot blacklist yourself.", ephemeral=True
+            )
+            return
+
+        # Prevent blacklisting bots
+        if user.bot:
+            await interaction.followup.send(
+                "You cannot blacklist bots.", ephemeral=True
+            )
+            return
 
         try:
-            # Add user to blacklist
+            # Check if user is already blacklisted
+            existing_status = await DatabaseOperations.get_blacklist_status(user.id)
+            was_already_blacklisted = existing_status["is_blacklisted"]
+
+            # Add user to blacklist (or update if already blacklisted)
             await DatabaseOperations.add_to_blacklist(
                 user_id=user.id, reason=reason, blacklisted_by=interaction.user.id
             )
 
+            action = "updated in" if was_already_blacklisted else "added to"
             embed = discord.Embed(
                 title=truncate_text("User Blacklisted", DISCORD_EMBED_TITLE_LIMIT),
                 description=truncate_text(
-                    f"{user.mention} has been added to the blacklist.",
+                    f"{user.mention} has been {action} the blacklist.",
                     DISCORD_EMBED_DESCRIPTION_LIMIT,
                 ),
                 color=discord.Color.red(),
@@ -1700,8 +1743,9 @@ class DiscordCommands(commands.Cog):
             )
 
             await interaction.followup.send(embed=embed, ephemeral=True)
+            action_verb = "updated" if was_already_blacklisted else "blacklisted"
             logger.info(
-                f"User {user.name} ({user.id}) was blacklisted by "
+                f"User {user.name} ({user.id}) was {action_verb} by "
                 f"{interaction.user.name} ({interaction.user.id}). Reason: {reason}"
             )
 
@@ -1713,6 +1757,7 @@ class DiscordCommands(commands.Cog):
             )
 
     @app_commands.command(name="remove_from_blacklist")
+    @app_commands.guilds(discord.Object(id=868656215834624020))  # main_guild_id
     @app_commands.describe(user="The user to remove from the blacklist")
     async def remove_from_blacklist(
         self, interaction: Interaction, user: discord.User
@@ -1728,28 +1773,24 @@ class DiscordCommands(commands.Cog):
             logger.error("Config not loaded in remove_from_blacklist")
             return
 
-        # Check if management
-        if not interaction.guild or interaction.guild.id != self.config.get(
-            "main_guild_id"
-        ):
+        # Check if in guild and user has ban_appeals permissions
+        if not interaction.guild:
             await interaction.followup.send(
-                "This command can only be used in the main server.", ephemeral=True
+                "This command can only be used in a server.", ephemeral=True
             )
             return
 
-        # Check user is management
-        management_role_id = self.config.get("management_role_id")
-        if management_role_id:
-            member = (
-                interaction.user
-                if isinstance(interaction.user, discord.Member)
-                else interaction.guild.get_member(interaction.user.id)
+        member = (
+            interaction.user
+            if isinstance(interaction.user, discord.Member)
+            else interaction.guild.get_member(interaction.user.id)
+        )
+
+        if not member or not self.check_ban_appeals_permission(member):
+            await interaction.followup.send(
+                "You do not have permission to use this command.", ephemeral=True
             )
-            if not member or member.get_role(management_role_id) is None:
-                await interaction.followup.send(
-                    "You do not have permission to use this command.", ephemeral=True
-                )
-                return
+            return
 
         try:
             # Check if user is in blacklist first
