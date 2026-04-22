@@ -639,7 +639,13 @@ class TicketButton(discord.ui.Button):
         # Notify user in DM
         try:
             dm_channel = await user.create_dm()
-            await dm_channel.send(f"Server staff will assist you shortly.")
+            config = load_config()
+            message = (
+                config.get("ticket_created_message")
+                if config
+                else "Server staff will assist you shortly."
+            )
+            await dm_channel.send(message)
             logger.info(f"Sent ticket confirmation DM to {user.name}")
         except discord.Forbidden:
             logger.warning(f"Cannot send DM to {user.name} - DMs are disabled")
