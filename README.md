@@ -23,7 +23,10 @@ Add FAQ entries in `config.json` under the `faq` section:
 
 #### How It Works
 
-- The bot monitors messages in **guild text channels only** (not DMs or ticket channels)
+- The bot monitors messages in **guild text channels only** (not DMs, not ticket channels, not main guild)
+- FAQ replies will **only** be sent for messages ending with a question mark (`?`)
+- FAQ replies will NOT be sent in the main guild (configured via `main_guild_id`)
+- FAQ replies will NOT be sent if the message is itself a reply to another message
 - Patterns are comma-separated in the `question` field
 - Matching is **case-insensitive** and uses **whole-word matching**
 - Patterns must match complete words/phrases (e.g., "console server" won't match in "testconsoletest")
@@ -33,10 +36,11 @@ Add FAQ entries in `config.json` under the `faq` section:
 
 With the config above, the bot will respond to:
 
-- "Are there console servers?" → ✓ matches "console server"
-- "Where is the 3x console?" → ✓ matches "3x console"
-- "Do you have a console server?" → ✓ matches "console server"
-- "testconsoletest testservertest" → ✗ no match (not whole words)
+- "Are there console servers?" → ✓ matches "console server" (has ?)
+- "Where is the 3x console?" → ✓ matches "3x console" (has ?)
+- "Do you have a console server?" → ✓ matches "console server" (has ?)
+- "console server" → ✗ no match (no question mark)
+- "testconsoletest testservertest?" → ✗ no match (not whole words)
 
 ### Ticket System
 

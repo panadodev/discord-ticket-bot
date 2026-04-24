@@ -186,6 +186,10 @@ async def check_and_reply_faq(message: discord.Message, config: dict) -> bool:
     if not questions:
         return False
 
+    # Only respond to questions (messages ending with ?)
+    if not message.content.strip().endswith("?"):
+        return False
+
     # Normalize message content for matching
     message_lower = message.content.lower()
 
@@ -244,10 +248,16 @@ async def on_message(message: discord.Message):
     if not config:
         return
 
-    # Check for FAQ matches in guild text channels (not DMs, not tickets)
+    # Check for FAQ matches in guild text channels (not DMs, not tickets, not main guild)
     if isinstance(message.channel, discord.TextChannel):
-        if not is_ticket_channel(message.channel.name):
-            # This is a regular guild channel, check for FAQ
+        main_guild_id = config.get("main_guild_id")
+        if (
+            not is_ticket_channel(message.channel.name)
+            and message.guild
+            and message.guild.id != main_guild_id
+            and not message.reference  # Don't reply to messages that are themselves replies
+        ):
+            # This is a regular guild channel (not main guild), check for FAQ
             await check_and_reply_faq(message, config)
 
     # Handle DM messages from users (forward to their ticket)
