@@ -199,8 +199,8 @@ async def check_and_reply_faq(message: discord.Message, config: dict) -> bool:
         # Split patterns by comma for multiple keywords/phrases
         patterns = [pattern.strip() for pattern in question_patterns.split(",")]
 
-        # Check if all patterns are in the message
-        if all(pattern in message_lower for pattern in patterns):
+        # Check if any pattern is in the message
+        if any(pattern in message_lower for pattern in patterns):
             try:
                 await message.reply(answer, mention_author=False)
                 logger.info(
