@@ -5,6 +5,7 @@ import io
 import json
 import logging
 import os
+import re
 import sys
 
 import discord
@@ -199,17 +200,22 @@ async def check_and_reply_faq(message: discord.Message, config: dict) -> bool:
         # Split patterns by comma for multiple keywords/phrases
         patterns = [pattern.strip() for pattern in question_patterns.split(",")]
 
-        # Check if any pattern is in the message
-        if any(pattern in message_lower for pattern in patterns):
-            try:
-                await message.reply(answer, mention_author=False)
-                logger.info(
-                    f"Replied to FAQ question from {message.author.name}: {question_patterns}"
-                )
-                return True
-            except Exception as e:
-                logger.error(f"Failed to send FAQ reply: {e}")
-                return False
+        # Check if any pattern is in the message (using word boundaries for exact matching)
+        for pattern in patterns:
+            # Escape special regex characters and add word boundaries
+            escaped_pattern = re.escape(pattern)
+            # Use \b for word boundaries to match whole words/phrases only
+            regex_pattern = r"\b" + escaped_pattern + r"\b"
+            if re.search(regex_pattern, message_lower):
+                try:
+                    await message.reply(answer, mention_author=False)
+                    logger.info(
+                        f"Replied to FAQ question from {message.author.name}: {pattern}"
+                    )
+                    return True
+                except Exception as e:
+                    logger.error(f"Failed to send FAQ reply: {e}")
+                    return False
 
     return False
 

@@ -25,16 +25,18 @@ Add FAQ entries in `config.json` under the `faq` section:
 
 - The bot monitors messages in **guild text channels only** (not DMs or ticket channels)
 - Patterns are comma-separated in the `question` field
-- Matching is **case-insensitive**
+- Matching is **case-insensitive** and uses **whole-word matching**
+- Patterns must match complete words/phrases (e.g., "console server" won't match in "testconsoletest")
 - The bot will respond if the message contains **any** of the listed patterns
 
 #### Examples
 
 With the config above, the bot will respond to:
 
-- "Are there console servers?" → matches "console server"
-- "Where is the 3x console?" → matches "3x console"
-- "Do you have a console server?" → matches "console server"
+- "Are there console servers?" → ✓ matches "console server"
+- "Where is the 3x console?" → ✓ matches "3x console"
+- "Do you have a console server?" → ✓ matches "console server"
+- "testconsoletest testservertest" → ✗ no match (not whole words)
 
 ### Ticket System
 
