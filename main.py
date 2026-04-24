@@ -161,6 +161,59 @@ async def on_ready():
         logger.error(f"Failed to sync commands or add cog: {e}")
 
 
+def is_ticket_channel(channel_name: str) -> bool:
+    """Check if a channel is a ticket channel based on its name format."""
+    if "-" not in channel_name:
+        return False
+
+    try:
+        # Ticket channels end with user ID (format: emoji-name-guild-userid)
+        int(channel_name.split("-")[-1])
+        return True
+    except (ValueError, IndexError):
+        return False
+
+
+async def check_and_reply_faq(message: discord.Message, config: dict) -> bool:
+    """
+    Check if message matches any FAQ patterns and reply with the answer.
+    Returns True if an FAQ was matched, False otherwise.
+    """
+    faq_data = config.get("faq", {})
+    questions = faq_data.get("questions", [])
+
+    if not questions:
+        return False
+
+    # Normalize message content for matching
+    message_lower = message.content.lower()
+
+    # Check each FAQ question pattern
+    for faq in questions:
+        question_patterns = faq.get("question", "").lower()
+        answer = faq.get("answer", "")
+
+        if not question_patterns or not answer:
+            continue
+
+        # Split patterns by comma for multiple keywords/phrases
+        patterns = [pattern.strip() for pattern in question_patterns.split(",")]
+
+        # Check if all patterns are in the message
+        if all(pattern in message_lower for pattern in patterns):
+            try:
+                await message.reply(answer, mention_author=False)
+                logger.info(
+                    f"Replied to FAQ question from {message.author.name}: {question_patterns}"
+                )
+                return True
+            except Exception as e:
+                logger.error(f"Failed to send FAQ reply: {e}")
+                return False
+
+    return False
+
+
 @bot.event
 async def on_message(message: discord.Message):
     """Handle message forwarding between tickets and DMs"""
@@ -184,6 +237,12 @@ async def on_message(message: discord.Message):
     config = load_config()
     if not config:
         return
+
+    # Check for FAQ matches in guild text channels (not DMs, not tickets)
+    if isinstance(message.channel, discord.TextChannel):
+        if not is_ticket_channel(message.channel.name):
+            # This is a regular guild channel, check for FAQ
+            await check_and_reply_faq(message, config)
 
     # Handle DM messages from users (forward to their ticket)
     if isinstance(message.channel, discord.DMChannel):
