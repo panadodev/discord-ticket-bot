@@ -13,7 +13,7 @@
         "faq": {
             "questions": [
                 {
-                    "question": "console",
+                    "question": "console server, console servers, willjums console, console rust, server for console, servers for console, console server for rust",
                     "answer": "We do not have any console servers."
                 }
             ]
@@ -59,6 +59,7 @@
                         "Please describe your issue:"
                     ],
                     "check_for_steamid_provided": false,
+                    "check_for_steamid_linked": false,
                     "find_steam_id": "Find your own steam id please[:](https://pub-ac6368b6320d4e8bb06d39c4ace57205.r2.dev/findownsteamid.png)"
                 },
                 "player_report": {
@@ -82,6 +83,7 @@
                         "Why are they being reported:"
                     ],
                     "check_for_steamid_provided": true,
+                    "check_for_steamid_linked": false,
                     "find_steam_id": "Press F7 in game and click on the *copy* button next to the steam id[:](https://pub-ac6368b6320d4e8bb06d39c4ace57205.r2.dev/findothersteamid.png)"
                 },
                 "ban_appeals": {
@@ -101,6 +103,7 @@
                         "What ban are you appealing for and why:"
                     ],
                     "check_for_steamid_provided": true,
+                    "check_for_steamid_linked": true,
                     "find_steam_id": "Find your own steam id please[:](https://pub-ac6368b6320d4e8bb06d39c4ace57205.r2.dev/findownsteamid.png)"
                 },
                 "mute_appeals": {
@@ -122,6 +125,7 @@
                         "Why do you believe you were muted:"
                     ],
                     "check_for_steamid_provided": true,
+                    "check_for_steamid_linked": true,
                     "find_steam_id": "Find your own steam id please[:](https://pub-ac6368b6320d4e8bb06d39c4ace57205.r2.dev/findownsteamid.png)"
                 },
                 "staff_application": {
@@ -143,6 +147,7 @@
                         "How many hours can you dedicate weekly?"
                     ],
                     "check_for_steamid_provided": true,
+                    "check_for_steamid_linked": true,
                     "find_steam_id": "Find your own steam id please[:](https://pub-ac6368b6320d4e8bb06d39c4ace57205.r2.dev/findownsteamid.png)"
                 },
                 "vip_related": {
@@ -161,6 +166,7 @@
                         "Please describe your issue:"
                     ],
                     "check_for_steamid_provided": false,
+                    "check_for_steamid_linked": true,
                     "find_steam_id": "Find your own steam id please[:](https://pub-ac6368b6320d4e8bb06d39c4ace57205.r2.dev/findownsteamid.png)"
                 }
             }

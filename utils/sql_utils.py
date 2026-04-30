@@ -51,6 +51,16 @@ class blacklist(Model):
     blacklisted_at = fields.IntField(null=False)
 
 
+class linked_accounts(Model):
+    class Meta:
+        table = "linked_accounts"
+
+    discord_user_id = fields.BigIntField(pk=True)
+    steam_user_ids = fields.JSONField(null=False)
+
+    created_at = fields.IntField(null=False)
+
+
 # SQL :
 class DatabaseOperations:
 
@@ -265,3 +275,33 @@ class DatabaseOperations:
             await record.delete()
             return True
         return False
+
+    @staticmethod
+    async def check_linked_account(discord_user_id: int):
+        record = await linked_accounts.get_or_none(discord_user_id=discord_user_id)
+        if record:
+            return {
+                "linked": True,
+                "steam_user_ids": record.steam_user_ids,
+                "created_at": record.created_at,
+            }
+        else:
+            return {"linked": False}
+
+    @staticmethod
+    async def link_account(discord_user_id: int, steam_user_ids: list):
+        existing_record = await linked_accounts.get_or_none(
+            discord_user_id=discord_user_id
+        )
+        if existing_record:
+            existing_record.steam_user_ids = steam_user_ids
+            existing_record.created_at = int(time.time())
+            await existing_record.save()
+            return existing_record
+        else:
+            new_record = await linked_accounts.create(
+                discord_user_id=discord_user_id,
+                steam_user_ids=steam_user_ids,
+                created_at=int(time.time()),
+            )
+            return new_record

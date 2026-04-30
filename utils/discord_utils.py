@@ -14,6 +14,7 @@ from discord.ext import commands, tasks
 from dotenv import load_dotenv
 
 from utils.sql_utils import DatabaseOperations
+from utils.check_linked_accounts import get_steam_id_from_discord
 
 load_dotenv()
 
@@ -616,6 +617,22 @@ class TicketButton(discord.ui.Button):
                 value=truncate_text(answer, DISCORD_EMBED_FIELD_VALUE_LIMIT),
                 inline=False,
             )
+
+        # Check for linked Steam accounts if configured
+        if ticket_config.get("check_for_steamid_linked", False):
+            try:
+                steam_id = await get_steam_id_from_discord(user.id)
+                if steam_id:
+                    embed.add_field(
+                        name="Linked Steam ID",
+                        value=str(steam_id),
+                        inline=False,
+                    )
+                    logger.info(
+                        f"Found linked Steam ID {steam_id} for user {user.name}"
+                    )
+            except Exception as e:
+                logger.warning(f"Failed to fetch linked Steam ID for {user.name}: {e}")
 
         # Create close button view
         close_button = CloseTicketButton(self.bot)
