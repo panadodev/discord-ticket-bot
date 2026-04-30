@@ -328,6 +328,10 @@ class TicketButton(discord.ui.Button):
                 # User cancelled or timeout
                 return
 
+            if not interaction.guild:
+                logger.error("Interaction guild is None")
+                return
+
             source_org = interaction.guild.name.lower().replace(" ", "-")
             source_org_id = interaction.guild.id
 
@@ -353,7 +357,7 @@ class TicketButton(discord.ui.Button):
             users_in_process.discard(user.id)
 
     async def check_existing_ticket(
-        self, guild: discord.Guild, user: discord.User, ticket_type: str
+        self, guild: discord.Guild, user: discord.User | discord.Member, ticket_type: str
     ) -> Optional[discord.TextChannel]:
         """Check if user already has an open ticket of the same type"""
         # Search for channels matching the pattern: emoji-tickettype-username-...-userid
@@ -370,14 +374,15 @@ class TicketButton(discord.ui.Button):
         return None
 
     async def collect_answers_via_dm(
-        self, user: discord.User, questions: list[str]
+        self, user: discord.User | discord.Member, questions: list[str]
     ) -> Optional[list[str]]:
         """Send questions to user via DM and collect answers"""
         dm_channel = await user.create_dm()
         answers = []
 
         welcome_dm = self.config.get("welcome_dm")
-        await dm_channel.send(truncate_text(welcome_dm, DISCORD_MESSAGE_LIMIT))
+        if welcome_dm:
+            await dm_channel.send(truncate_text(welcome_dm, DISCORD_MESSAGE_LIMIT))
 
         question_index = 0
         while question_index < len(questions):
@@ -457,7 +462,7 @@ class TicketButton(discord.ui.Button):
     async def create_ticket_channel(
         self,
         guild: discord.Guild,
-        user: discord.User,
+        user: discord.User | discord.Member,
         ticket_config: dict,
         answers: list[str],
         source_org: str,
@@ -573,6 +578,10 @@ class TicketButton(discord.ui.Button):
 
         # Create the ticket channel with emoji icon
         try:
+            if incoming_category and not isinstance(incoming_category, discord.CategoryChannel):
+                logger.error(f"Invalid category type: {type(incoming_category).__name__}")
+                raise ValueError("Invalid category type")
+
             ticket_channel = await guild.create_text_channel(
                 name=full_channel_name,
                 category=incoming_category,
@@ -695,7 +704,13 @@ class CloseTicketButton(discord.ui.Button):
             )
             return
 
-        channel_topic = interaction.channel.topic
+        if not hasattr(interaction.channel, 'topic'):
+            await interaction.followup.send(
+                "This channel type does not support topics.", ephemeral=True
+            )
+            return
+
+        channel_topic = channel.topic
         if not channel_topic or not channel_topic.startswith("{"):
             await interaction.followup.send(
                 "This channel does not have valid ticket metadata. Cannot close ticket.",
@@ -735,6 +750,9 @@ class CloseTicketButton(discord.ui.Button):
 
         # Store channel reference and generate transcript BEFORE deletion
         channel_name = channel.name
+        if not interaction.guild:
+            logger.error("Interaction guild is None")
+            return
         guild_id = interaction.guild.id
         transcript_result = None
         ticket_metadata = None
@@ -776,9 +794,9 @@ class CloseTicketButton(discord.ui.Button):
         ):
             try:
                 log_channel_id = ticket_metadata["ticket_config"].get("log_channel")
-                if log_channel_id:
+                if log_channel_id and interaction.guild:
                     log_ch = interaction.guild.get_channel(log_channel_id)
-                    if log_ch:
+                    if log_ch and isinstance(log_ch, discord.TextChannel):
                         transcript_file = discord.File(
                             io.BytesIO(transcript_result.encode()),
                             filename=f"transcript-{channel_name}.html",
@@ -1355,7 +1373,7 @@ class DiscordCommands(commands.Cog):
             return
         # check user is management
         management_role_id = self.config.get("management_role_id")
-        if management_role_id:
+        if management_role_id and isinstance(interaction.user, discord.Member):
             management_role = interaction.guild.get_role(management_role_id)
             if management_role not in interaction.user.roles:
                 await interaction.followup.send(
@@ -1452,6 +1470,13 @@ class DiscordCommands(commands.Cog):
                 return
 
             channel = interaction.channel
+            if not isinstance(channel, discord.TextChannel):
+                await safe_followup_send(
+                    interaction,
+                    "This command can only be used in ticket channels.",
+                    ephemeral=True,
+                )
+                return
 
             # Parse ticket metadata
             if not channel.topic or not channel.topic.startswith("{"):
@@ -1490,6 +1515,12 @@ class DiscordCommands(commands.Cog):
             ticket_metadata["ticket_config"]["awaiting_response_set_at"] = int(
                 time.time()
             )
+
+            if not self.config:
+                await safe_followup_send(
+                    interaction, "Configuration not loaded.", ephemeral=True
+                )
+                return
 
             awaiting_response_category_id = self.config["awaiting_response_category"]
             awaiting_response_category = self.bot.get_channel(
@@ -1545,7 +1576,7 @@ class DiscordCommands(commands.Cog):
                 return
 
             # Notify in channel
-            timeout = self.config.get("awaiting_response_timeout", 48)
+            timeout = self.config.get("awaiting_response_timeout", 48) if self.config else 48
             timeout_unix = int(time.time()) + timeout * 3600
             await channel.send(
                 f"This ticket is marked as awaiting response and will expire if no response is received <t:{timeout_unix}:R>."
@@ -1930,6 +1961,9 @@ class TicketResponseTimeoutHandler(commands.Cog):
     async def check_awaiting_response_tickets(self):
         try:
             logger.info("Checking for tickets marked as awaiting response...")
+            if not self.config:
+                logger.error("Configuration not loaded")
+                return
             awaiting_response_category_id = self.config["awaiting_response_category"]
             awaiting_response_category = self.bot.get_channel(
                 awaiting_response_category_id
@@ -1937,6 +1971,11 @@ class TicketResponseTimeoutHandler(commands.Cog):
             if not awaiting_response_category:
                 logger.error(
                     f"Awaiting response category with ID {awaiting_response_category_id} not found"
+                )
+                return
+            if not isinstance(awaiting_response_category, discord.CategoryChannel):
+                logger.error(
+                    f"Channel {awaiting_response_category_id} is not a CategoryChannel"
                 )
                 return
             for channel in awaiting_response_category.text_channels:
@@ -1979,7 +2018,7 @@ class TicketResponseTimeoutHandler(commands.Cog):
                                         "ticket_type"
                                     ],
                                     transcript=transcript_result,
-                                    closed_by=self.bot.user.id,
+                                    closed_by=self.bot.user.id if self.bot.user else 0,
                                     opened_by=ticket_owner_id,
                                     made_at=ticket_metadata["ticket_config"][
                                         "created_at"
@@ -1996,7 +2035,7 @@ class TicketResponseTimeoutHandler(commands.Cog):
                                 )
                                 if log_channel_id and transcript_result:
                                     log_ch = self.bot.get_channel(log_channel_id)
-                                    if log_ch:
+                                    if log_ch and isinstance(log_ch, discord.TextChannel):
                                         transcript_file = discord.File(
                                             io.BytesIO(transcript_result.encode()),
                                             filename=f"transcript-{channel.name}.html",

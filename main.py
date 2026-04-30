@@ -141,12 +141,15 @@ async def on_ready():
 
             for channel_id in ticket_channels:
                 channel = bot.get_channel(channel_id)
-                if channel:
+                if channel and isinstance(channel, discord.TextChannel):
                     # Check if embed already exists (check last message)
+                    # Only text-based channels support history
                     messages = [msg async for msg in channel.history(limit=1)]
 
                     # Only create if channel is empty or last message isn't from the bot
-                    if not messages or messages[0].author.id != bot.user.id:
+                    if not messages or (
+                        bot.user and messages[0].author.id != bot.user.id
+                    ):
                         await ticket_embed_manager.create_ticket_support_embed(channel)
                         logger.info(
                             f"Created ticket support embed in channel {channel_id}"
@@ -155,6 +158,10 @@ async def on_ready():
                         logger.info(
                             f"ℹTicket support embed already exists in channel {channel_id}"
                         )
+                elif channel:
+                    logger.warning(
+                        f"Channel {channel_id} is not a TextChannel (type: {type(channel).__name__})"
+                    )
                 else:
                     logger.error(f"Could not find channel with ID {channel_id}")
 
@@ -305,7 +312,8 @@ async def on_message(message: discord.Message):
             )
             embed.set_author(
                 name=truncate_text(
-                    message.author.global_name, DISCORD_EMBED_TITLE_LIMIT
+                    message.author.global_name or message.author.name,
+                    DISCORD_EMBED_TITLE_LIMIT,
                 ),
                 icon_url=icon_url,
             )
@@ -429,7 +437,9 @@ async def on_message(message: discord.Message):
 
                             if normal_category_id:
                                 normal_category = bot.get_channel(normal_category_id)
-                                if normal_category:
+                                if normal_category and isinstance(
+                                    normal_category, discord.CategoryChannel
+                                ):
                                     # Update metadata - remove awaiting response flags
                                     ticket_metadata["ticket_config"][
                                         "awaiting_response"
@@ -473,9 +483,9 @@ async def on_message(message: discord.Message):
                         exc_info=True,
                     )
 
-            await ticket_channel.send(embed=embed, files=files if files else None)
+            await ticket_channel.send(embed=embed, files=files or [])
             logger.info(
-                f"Forwarded DM from {message.author.global_name} to ticket {ticket_channel.name}"
+                f"Forwarded DM from {message.author.global_name or message.author.name} to ticket {ticket_channel.name}"
             )
             # react to message
             await message.add_reaction("✅")
@@ -551,7 +561,8 @@ async def on_message(message: discord.Message):
             else:
                 embed.set_author(
                     name=truncate_text(
-                        message.author.global_name, DISCORD_EMBED_TITLE_LIMIT
+                        message.author.global_name or message.author.name,
+                        DISCORD_EMBED_TITLE_LIMIT,
                     ),
                     icon_url=message.author.display_avatar.url,
                 )
@@ -591,9 +602,7 @@ async def on_message(message: discord.Message):
             if message.embeds:
                 embeds_to_send.extend(message.embeds)
 
-            await ticket_owner.send(
-                embeds=embeds_to_send, files=files if files else None
-            )
+            await ticket_owner.send(embeds=embeds_to_send, files=files or [])
 
             # delete message and replace with the received embed
             await message.delete()
