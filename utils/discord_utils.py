@@ -1985,7 +1985,7 @@ class DiscordCommands(commands.Cog):
 
     @app_commands.command(name="linked_accounts")
     @app_commands.describe(user_id="The ID of the user to fetch linked accounts for")
-    async def linked_accounts(self, interaction: Interaction, user_id: int):
+    async def linked_accounts(self, interaction: Interaction, user_id: str):
         """Fetch linked accounts for a given user ID"""
         await interaction.response.defer(ephemeral=True)
 
@@ -2007,12 +2007,22 @@ class DiscordCommands(commands.Cog):
             )
             return
 
+        # Validate and convert user_id to int
         try:
-            linked_data = await DatabaseOperations.check_linked_account(user_id)
+            target_user_id = int(user_id)
+        except ValueError:
+            await interaction.followup.send(
+                "Invalid user ID. Please provide a valid Discord user ID.",
+                ephemeral=True,
+            )
+            return
+
+        try:
+            linked_data = await DatabaseOperations.check_linked_account(target_user_id)
 
             # Try to fetch the user object
             try:
-                user = await self.bot.fetch_user(user_id)
+                user = await self.bot.fetch_user(target_user_id)
                 user_mention = user.mention
                 user_name = (
                     f"{user.name}#{user.discriminator}"
@@ -2020,8 +2030,8 @@ class DiscordCommands(commands.Cog):
                     else user.name
                 )
             except:
-                user_mention = f"<@{user_id}>"
-                user_name = f"User ID: {user_id}"
+                user_mention = f"<@{target_user_id}>"
+                user_name = f"User ID: {target_user_id}"
 
             if linked_data.get("linked"):
                 embed = discord.Embed(
@@ -2084,7 +2094,7 @@ class DiscordCommands(commands.Cog):
 
         except Exception as e:
             logger.error(
-                f"Error fetching linked accounts for user {user_id}: {e}", exc_info=True
+                f"Error fetching linked accounts for user {target_user_id}: {e}", exc_info=True
             )
             await interaction.followup.send(
                 "An error occurred while fetching linked accounts.",
