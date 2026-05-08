@@ -2033,11 +2033,10 @@ class DiscordCommands(commands.Cog):
 
             # Extract Discord and Steam IDs from API response
             discord_id = api_data.get("discord_id")
-            steam_ids = api_data.get("steam_ids", [])
+            steam_id = api_data.get("steam_id")
 
-            # Ensure steam_ids is a list
-            if not isinstance(steam_ids, list):
-                steam_ids = [steam_ids] if steam_ids else []
+            # Convert single steam_id to list for consistent handling
+            steam_ids = [steam_id] if steam_id else []
 
             # Try to fetch the Discord user object if we have a Discord ID
             user_mention = None
@@ -2088,7 +2087,7 @@ class DiscordCommands(commands.Cog):
                     inline=False,
                 )
 
-            # Add Steam IDs
+            # Add Steam ID
             if steam_ids:
                 steam_ids_text = "\n".join([f"`{sid}`" for sid in steam_ids])
                 embed.add_field(
@@ -2103,7 +2102,7 @@ class DiscordCommands(commands.Cog):
                 )
             else:
                 embed.add_field(
-                    name=truncate_text("Steam IDs", DISCORD_EMBED_FIELD_NAME_LIMIT),
+                    name=truncate_text("Steam ID", DISCORD_EMBED_FIELD_NAME_LIMIT),
                     value=truncate_text("None", DISCORD_EMBED_FIELD_VALUE_LIMIT),
                     inline=False,
                 )
