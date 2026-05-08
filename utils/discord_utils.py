@@ -1266,6 +1266,30 @@ class DiscordCommands(commands.Cog):
 
         return False
 
+    def check_linked_accounts_permission(self, member: discord.Member) -> bool:
+        """Check if member has any of the allowed_to_check_linked_accounts roles"""
+        if not self.config:
+            return False
+
+        allowed_roles = self.config.get("allowed_to_check_linked_accounts", [])
+
+        # Get all org role mappings
+        orgs = self.config.get("orgs", {})
+
+        # Check each allowed permission role
+        for perm_key in allowed_roles:
+            # Look through all orgs to find the role ID
+            for org_name, org_data in orgs.items():
+                if org_name == "tickets":
+                    continue
+                roles = org_data.get("roles", {})
+                if perm_key in roles:
+                    role_id = roles[perm_key]
+                    if member.get_role(role_id) is not None:
+                        return True
+
+        return False
+
     @app_commands.command(name="assign")
     @app_commands.describe()
     async def assign_ticket(self, interaction: Interaction) -> None:
@@ -1964,6 +1988,24 @@ class DiscordCommands(commands.Cog):
     async def linked_accounts(self, interaction: Interaction, user_id: int):
         """Fetch linked accounts for a given user ID"""
         await interaction.response.defer(ephemeral=True)
+
+        # Check if user has permission to use this command
+        if not isinstance(interaction.user, discord.Member):
+            await interaction.followup.send(
+                "This command can only be used in a server.",
+                ephemeral=True,
+            )
+            return
+
+        if not self.check_linked_accounts_permission(interaction.user):
+            await interaction.followup.send(
+                "You do not have permission to use this command.",
+                ephemeral=True,
+            )
+            logger.warning(
+                f"User {interaction.user.name} ({interaction.user.id}) attempted to use /linked_accounts without permission"
+            )
+            return
 
         try:
             linked_data = await DatabaseOperations.check_linked_account(user_id)

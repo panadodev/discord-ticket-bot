@@ -10,6 +10,10 @@
         "awaiting_response_category": 1476016370503123036,
         "welcome_dm": "**Ticket Creation Process**\n* Avoid long answers. \n* You have 10 minutes to respond to each question.\n* Respect staff members (Will not tolerate any abuse)\n* Type `cancel` to cancel the ticket creation.",
         "ticket_created_message": "Your ticket has been created! Server staff will only respond if they need more information.",
+        "allowed_to_check_linked_accounts": [
+            "management",
+            "senior_admin"
+        ],
         "faq": {
             "questions": [
                 {
