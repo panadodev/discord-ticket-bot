@@ -2094,7 +2094,8 @@ class DiscordCommands(commands.Cog):
 
         except Exception as e:
             logger.error(
-                f"Error fetching linked accounts for user {target_user_id}: {e}", exc_info=True
+                f"Error fetching linked accounts for user {target_user_id}: {e}",
+                exc_info=True,
             )
             await interaction.followup.send(
                 "An error occurred while fetching linked accounts.",
