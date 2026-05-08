@@ -2,7 +2,12 @@ import os
 import aiohttp
 from typing import Optional
 
+from utils.sql_utils import DatabaseOperations
 
+db = DatabaseOperations()
+
+
+# Pull from main database, will crate local record if not exists
 async def get_steam_id_from_discord(discord_id: int) -> Optional[int]:
     """
     Query the link API to get the steam_id from a discord_id
@@ -26,6 +31,13 @@ async def get_steam_id_from_discord(discord_id: int) -> Optional[int]:
                 return None  # No link found
             elif response.status == 200:
                 data = await response.json()
-                return data.get("steam_id")
+                steam_id = data.get("steam_id")
+                if steam_id:
+                    # log to local:
+                    await db.link_account(
+                        discord_user_id=discord_id, steam_user_ids=[steam_id]
+                    )
+                return steam_id
+
             else:
                 raise Exception(f"Unexpected status code: {response.status}")

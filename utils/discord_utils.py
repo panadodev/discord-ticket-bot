@@ -647,6 +647,7 @@ class TicketButton(discord.ui.Button):
                     logger.info(
                         f"Found linked Steam ID {steam_id} for user {user.name}"
                     )
+
             except Exception as e:
                 logger.warning(f"Failed to fetch linked Steam ID for {user.name}: {e}")
 
@@ -2018,9 +2019,7 @@ class DiscordCommands(commands.Cog):
             return
 
         try:
-            linked_data = await DatabaseOperations.check_linked_account(target_user_id)
-
-            # Try to fetch the user object
+            # Try to fetch the user object first
             try:
                 user = await self.bot.fetch_user(target_user_id)
                 user_mention = user.mention
@@ -2032,6 +2031,12 @@ class DiscordCommands(commands.Cog):
             except:
                 user_mention = f"<@{target_user_id}>"
                 user_name = f"User ID: {target_user_id}"
+
+            # Fetch from API (which also updates local DB)
+            steam_id = await get_steam_id_from_discord(target_user_id)
+
+            # Then fetch from local DB to get full metadata
+            linked_data = await DatabaseOperations.check_linked_account(target_user_id)
 
             if linked_data.get("linked"):
                 embed = discord.Embed(
