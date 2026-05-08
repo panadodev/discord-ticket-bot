@@ -357,7 +357,10 @@ class TicketButton(discord.ui.Button):
             users_in_process.discard(user.id)
 
     async def check_existing_ticket(
-        self, guild: discord.Guild, user: discord.User | discord.Member, ticket_type: str
+        self,
+        guild: discord.Guild,
+        user: discord.User | discord.Member,
+        ticket_type: str,
     ) -> Optional[discord.TextChannel]:
         """Check if user already has an open ticket of the same type"""
         # Search for channels matching the pattern: emoji-tickettype-username-...-userid
@@ -578,8 +581,12 @@ class TicketButton(discord.ui.Button):
 
         # Create the ticket channel with emoji icon
         try:
-            if incoming_category and not isinstance(incoming_category, discord.CategoryChannel):
-                logger.error(f"Invalid category type: {type(incoming_category).__name__}")
+            if incoming_category and not isinstance(
+                incoming_category, discord.CategoryChannel
+            ):
+                logger.error(
+                    f"Invalid category type: {type(incoming_category).__name__}"
+                )
                 raise ValueError("Invalid category type")
 
             ticket_channel = await guild.create_text_channel(
@@ -704,7 +711,7 @@ class CloseTicketButton(discord.ui.Button):
             )
             return
 
-        if not hasattr(interaction.channel, 'topic'):
+        if not hasattr(interaction.channel, "topic"):
             await interaction.followup.send(
                 "This channel type does not support topics.", ephemeral=True
             )
@@ -1576,7 +1583,9 @@ class DiscordCommands(commands.Cog):
                 return
 
             # Notify in channel
-            timeout = self.config.get("awaiting_response_timeout", 48) if self.config else 48
+            timeout = (
+                self.config.get("awaiting_response_timeout", 48) if self.config else 48
+            )
             timeout_unix = int(time.time()) + timeout * 3600
             await channel.send(
                 f"This ticket is marked as awaiting response and will expire if no response is received <t:{timeout_unix}:R>."
@@ -1950,6 +1959,96 @@ class DiscordCommands(commands.Cog):
                 ephemeral=True,
             )
 
+    @app_commands.command(name="linked_accounts")
+    @app_commands.describe(user_id="The ID of the user to fetch linked accounts for")
+    async def linked_accounts(self, interaction: Interaction, user_id: int):
+        """Fetch linked accounts for a given user ID"""
+        await interaction.response.defer(ephemeral=True)
+
+        try:
+            linked_data = await DatabaseOperations.check_linked_account(user_id)
+
+            # Try to fetch the user object
+            try:
+                user = await self.bot.fetch_user(user_id)
+                user_mention = user.mention
+                user_name = (
+                    f"{user.name}#{user.discriminator}"
+                    if user.discriminator != "0"
+                    else user.name
+                )
+            except:
+                user_mention = f"<@{user_id}>"
+                user_name = f"User ID: {user_id}"
+
+            if linked_data.get("linked"):
+                embed = discord.Embed(
+                    title=truncate_text("Linked Accounts", DISCORD_EMBED_TITLE_LIMIT),
+                    description=truncate_text(
+                        f"Account information for {user_mention}",
+                        DISCORD_EMBED_DESCRIPTION_LIMIT,
+                    ),
+                    color=discord.Color.green(),
+                )
+                embed.add_field(
+                    name=truncate_text("User", DISCORD_EMBED_FIELD_NAME_LIMIT),
+                    value=truncate_text(user_name, DISCORD_EMBED_FIELD_VALUE_LIMIT),
+                    inline=False,
+                )
+
+                steam_ids = linked_data.get("steam_user_ids", [])
+                if isinstance(steam_ids, list):
+                    steam_ids_text = (
+                        "\n".join([f"`{sid}`" for sid in steam_ids])
+                        if steam_ids
+                        else "None"
+                    )
+                else:
+                    steam_ids_text = f"`{steam_ids}`"
+
+                embed.add_field(
+                    name=truncate_text("Steam IDs", DISCORD_EMBED_FIELD_NAME_LIMIT),
+                    value=truncate_text(
+                        steam_ids_text, DISCORD_EMBED_FIELD_VALUE_LIMIT
+                    ),
+                    inline=False,
+                )
+
+                created_at = linked_data.get("created_at")
+                if created_at:
+                    embed.add_field(
+                        name=truncate_text(
+                            "Linked Since", DISCORD_EMBED_FIELD_NAME_LIMIT
+                        ),
+                        value=truncate_text(
+                            f"<t:{created_at}:F>", DISCORD_EMBED_FIELD_VALUE_LIMIT
+                        ),
+                        inline=False,
+                    )
+
+                await interaction.followup.send(embed=embed, ephemeral=True)
+            else:
+                embed = discord.Embed(
+                    title=truncate_text(
+                        "No Linked Accounts", DISCORD_EMBED_TITLE_LIMIT
+                    ),
+                    description=truncate_text(
+                        f"{user_mention} has no linked accounts.",
+                        DISCORD_EMBED_DESCRIPTION_LIMIT,
+                    ),
+                    color=discord.Color.orange(),
+                )
+                await interaction.followup.send(embed=embed, ephemeral=True)
+
+        except Exception as e:
+            logger.error(
+                f"Error fetching linked accounts for user {user_id}: {e}", exc_info=True
+            )
+            await interaction.followup.send(
+                "An error occurred while fetching linked accounts.",
+                ephemeral=True,
+            )
+
 
 class TicketResponseTimeoutHandler(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -2035,7 +2134,9 @@ class TicketResponseTimeoutHandler(commands.Cog):
                                 )
                                 if log_channel_id and transcript_result:
                                     log_ch = self.bot.get_channel(log_channel_id)
-                                    if log_ch and isinstance(log_ch, discord.TextChannel):
+                                    if log_ch and isinstance(
+                                        log_ch, discord.TextChannel
+                                    ):
                                         transcript_file = discord.File(
                                             io.BytesIO(transcript_result.encode()),
                                             filename=f"transcript-{channel.name}.html",
