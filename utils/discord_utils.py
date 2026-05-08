@@ -14,7 +14,7 @@ from discord.ext import commands, tasks
 from dotenv import load_dotenv
 
 from utils.sql_utils import DatabaseOperations
-from utils.check_linked_accounts import get_steam_id_from_discord
+from utils.check_linked_accounts import get_steam_id_from_discord, get_linked_accounts
 
 load_dotenv()
 
@@ -1985,9 +1985,11 @@ class DiscordCommands(commands.Cog):
             )
 
     @app_commands.command(name="linked_accounts")
-    @app_commands.describe(user_id="The ID of the user to fetch linked accounts for")
+    @app_commands.describe(
+        user_id="Discord ID or Steam ID to fetch linked accounts for"
+    )
     async def linked_accounts(self, interaction: Interaction, user_id: str):
-        """Fetch linked accounts for a given user ID"""
+        """Fetch linked accounts for a given Discord or Steam ID"""
         await interaction.response.defer(ephemeral=True)
 
         # Check if user has permission to use this command
@@ -2010,96 +2012,107 @@ class DiscordCommands(commands.Cog):
 
         # Validate and convert user_id to int
         try:
-            target_user_id = int(user_id)
+            target_id = int(user_id)
         except ValueError:
             await interaction.followup.send(
-                "Invalid user ID. Please provide a valid Discord user ID.",
+                "Invalid ID. Please provide a valid Discord ID or Steam ID.",
                 ephemeral=True,
             )
             return
 
         try:
-            # Try to fetch the user object first
-            try:
-                user = await self.bot.fetch_user(target_user_id)
-                user_mention = user.mention
-                user_name = (
-                    f"{user.name}#{user.discriminator}"
-                    if user.discriminator != "0"
-                    else user.name
+            # Fetch from API - works with both Discord and Steam IDs
+            api_data = await get_linked_accounts(target_id)
+
+            if not api_data:
+                await interaction.followup.send(
+                    f"No linked accounts found for ID: `{target_id}`",
+                    ephemeral=True,
                 )
-            except:
-                user_mention = f"<@{target_user_id}>"
-                user_name = f"User ID: {target_user_id}"
+                return
 
-            # Fetch from API (which also updates local DB)
-            steam_id = await get_steam_id_from_discord(target_user_id)
+            # Extract Discord and Steam IDs from API response
+            discord_id = api_data.get("discord_id")
+            steam_ids = api_data.get("steam_ids", [])
 
-            # Then fetch from local DB to get full metadata
-            linked_data = await DatabaseOperations.check_linked_account(target_user_id)
+            # Ensure steam_ids is a list
+            if not isinstance(steam_ids, list):
+                steam_ids = [steam_ids] if steam_ids else []
 
-            if linked_data.get("linked"):
-                embed = discord.Embed(
-                    title=truncate_text("Linked Accounts", DISCORD_EMBED_TITLE_LIMIT),
-                    description=truncate_text(
-                        f"Account information for {user_mention}",
-                        DISCORD_EMBED_DESCRIPTION_LIMIT,
-                    ),
-                    color=discord.Color.green(),
-                )
+            # Try to fetch the Discord user object if we have a Discord ID
+            user_mention = None
+            user_name = None
+            if discord_id:
+                try:
+                    user = await self.bot.fetch_user(discord_id)
+                    user_mention = user.mention
+                    user_name = (
+                        f"{user.name}#{user.discriminator}"
+                        if user.discriminator != "0"
+                        else user.name
+                    )
+                except:
+                    user_mention = f"<@{discord_id}>"
+                    user_name = f"User ID: {discord_id}"
+
+            # Build the embed
+            embed = discord.Embed(
+                title=truncate_text("Linked Accounts", DISCORD_EMBED_TITLE_LIMIT),
+                description=truncate_text(
+                    f"Account information for {user_mention if user_mention else f'ID: `{target_id}`'}",
+                    DISCORD_EMBED_DESCRIPTION_LIMIT,
+                ),
+                color=discord.Color.green(),
+            )
+
+            # Add Discord user info if available
+            if discord_id and user_name:
                 embed.add_field(
-                    name=truncate_text("User", DISCORD_EMBED_FIELD_NAME_LIMIT),
+                    name=truncate_text("Discord User", DISCORD_EMBED_FIELD_NAME_LIMIT),
                     value=truncate_text(user_name, DISCORD_EMBED_FIELD_VALUE_LIMIT),
                     inline=False,
                 )
-
-                steam_ids = linked_data.get("steam_user_ids", [])
-                if isinstance(steam_ids, list):
-                    steam_ids_text = (
-                        "\n".join([f"`{sid}`" for sid in steam_ids])
-                        if steam_ids
-                        else "None"
-                    )
-                else:
-                    steam_ids_text = f"`{steam_ids}`"
-
                 embed.add_field(
-                    name=truncate_text("Steam IDs", DISCORD_EMBED_FIELD_NAME_LIMIT),
+                    name=truncate_text("Discord ID", DISCORD_EMBED_FIELD_NAME_LIMIT),
+                    value=truncate_text(
+                        f"`{discord_id}`", DISCORD_EMBED_FIELD_VALUE_LIMIT
+                    ),
+                    inline=False,
+                )
+            elif discord_id:
+                embed.add_field(
+                    name=truncate_text("Discord ID", DISCORD_EMBED_FIELD_NAME_LIMIT),
+                    value=truncate_text(
+                        f"`{discord_id}`", DISCORD_EMBED_FIELD_VALUE_LIMIT
+                    ),
+                    inline=False,
+                )
+
+            # Add Steam IDs
+            if steam_ids:
+                steam_ids_text = "\n".join([f"`{sid}`" for sid in steam_ids])
+                embed.add_field(
+                    name=truncate_text(
+                        f"Steam ID{'s' if len(steam_ids) > 1 else ''}",
+                        DISCORD_EMBED_FIELD_NAME_LIMIT,
+                    ),
                     value=truncate_text(
                         steam_ids_text, DISCORD_EMBED_FIELD_VALUE_LIMIT
                     ),
                     inline=False,
                 )
-
-                created_at = linked_data.get("created_at")
-                if created_at:
-                    embed.add_field(
-                        name=truncate_text(
-                            "Linked Since", DISCORD_EMBED_FIELD_NAME_LIMIT
-                        ),
-                        value=truncate_text(
-                            f"<t:{created_at}:F>", DISCORD_EMBED_FIELD_VALUE_LIMIT
-                        ),
-                        inline=False,
-                    )
-
-                await interaction.followup.send(embed=embed, ephemeral=True)
             else:
-                embed = discord.Embed(
-                    title=truncate_text(
-                        "No Linked Accounts", DISCORD_EMBED_TITLE_LIMIT
-                    ),
-                    description=truncate_text(
-                        f"{user_mention} has no linked accounts.",
-                        DISCORD_EMBED_DESCRIPTION_LIMIT,
-                    ),
-                    color=discord.Color.orange(),
+                embed.add_field(
+                    name=truncate_text("Steam IDs", DISCORD_EMBED_FIELD_NAME_LIMIT),
+                    value=truncate_text("None", DISCORD_EMBED_FIELD_VALUE_LIMIT),
+                    inline=False,
                 )
-                await interaction.followup.send(embed=embed, ephemeral=True)
+
+            await interaction.followup.send(embed=embed, ephemeral=True)
 
         except Exception as e:
             logger.error(
-                f"Error fetching linked accounts for user {target_user_id}: {e}",
+                f"Error fetching linked accounts for ID {target_id}: {e}",
                 exc_info=True,
             )
             await interaction.followup.send(
