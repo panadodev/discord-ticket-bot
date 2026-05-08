@@ -14,7 +14,7 @@ from discord.ext import commands, tasks
 from dotenv import load_dotenv
 
 from utils.sql_utils import DatabaseOperations
-from utils.check_linked_accounts import get_steam_id_from_discord, get_linked_accounts
+from utils.check_linked_accounts import get_linked_accounts
 
 load_dotenv()
 
@@ -637,16 +637,18 @@ class TicketButton(discord.ui.Button):
         # Check for linked Steam accounts if configured
         if ticket_config.get("check_for_steamid_linked", False):
             try:
-                steam_id = await get_steam_id_from_discord(user.id)
-                if steam_id:
-                    embed.add_field(
-                        name="Linked Steam ID",
-                        value=str(steam_id),
-                        inline=False,
-                    )
-                    logger.info(
-                        f"Found linked Steam ID {steam_id} for user {user.name}"
-                    )
+                linked_data = await get_linked_accounts(user.id)
+                if linked_data:
+                    steam_id = linked_data.get("steam_id")
+                    if steam_id:
+                        embed.add_field(
+                            name="Linked Steam ID",
+                            value=str(steam_id),
+                            inline=False,
+                        )
+                        logger.info(
+                            f"Found linked Steam ID {steam_id} for user {user.name}"
+                        )
 
             except Exception as e:
                 logger.warning(f"Failed to fetch linked Steam ID for {user.name}: {e}")
