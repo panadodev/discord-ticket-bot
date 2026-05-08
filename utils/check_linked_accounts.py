@@ -1,10 +1,11 @@
 import os
 import aiohttp
 from typing import Optional
-
+import logging
 from utils.sql_utils import DatabaseOperations
 
 db = DatabaseOperations()
+logger = logging.getLogger("main.py")
 
 
 # Pull from main database, will crate local record if not exists
@@ -61,6 +62,7 @@ async def get_linked_accounts(user_id: int) -> Optional[dict]:
 
     async with aiohttp.ClientSession() as session:
         async with session.get(url, params=params) as response:
+            logger.debug(f"API response: {response}")
             if response.status == 401:
                 raise Exception("Invalid API token")
             elif response.status == 404:

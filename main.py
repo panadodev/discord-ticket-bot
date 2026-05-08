@@ -41,7 +41,7 @@ sentry_sdk.init(
 )
 
 # Create the Sentry logging handler
-sentry_handler = EventHandler(level=logging.ERROR)
+sentry_handler = EventHandler(level=logging.DEBUG)
 
 logging.basicConfig(
     level=logging.INFO,
