@@ -41,10 +41,10 @@ sentry_sdk.init(
 )
 
 # Create the Sentry logging handler
-sentry_handler = EventHandler(level=logging.DEBUG)
+sentry_handler = EventHandler(level=logging.ERROR)
 
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,
     format="%(asctime)s - %(levelname)s - %(message)s",
     handlers=[
         logging.StreamHandler(sys.stdout),
