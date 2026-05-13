@@ -109,15 +109,15 @@ class DatabaseOperations:
         return count
 
     @staticmethod
-    async def average_respond_times():
+    async def median_respond_times():
         """
         {"org_a": {
         "ticket_type_a": {
-            "average_response_time": 123,
+            "median_response_time": 123,
             "ticket_count": 10
             },
         "ticket_type_b": {
-            "average_response_time": 456,
+            "median_response_time": 456,
             "ticket_count": 5
             }
             },
@@ -141,17 +141,21 @@ class DatabaseOperations:
                     origin_org_guild=org, ticket_type=t_type
                 ).values_list("created", "made_at")
 
-                total_response_time = sum(
+                durations = sorted(
                     created - made_at for created, made_at in response_times
                 )
-                ticket_count = len(response_times)
+                ticket_count = len(durations)
 
-                average_response_time = (
-                    total_response_time / ticket_count if ticket_count > 0 else 0
-                )
+                if ticket_count == 0:
+                    median_response_time = 0
+                elif ticket_count % 2 == 1:
+                    median_response_time = durations[ticket_count // 2]
+                else:
+                    mid = ticket_count // 2
+                    median_response_time = (durations[mid - 1] + durations[mid]) / 2
 
                 results[org][t_type] = {
-                    "average_response_time": average_response_time,
+                    "median_response_time": median_response_time,
                     "ticket_count": ticket_count,
                 }
 

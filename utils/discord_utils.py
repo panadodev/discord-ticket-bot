@@ -1384,9 +1384,9 @@ class DiscordCommands(commands.Cog):
         close_button = CloseTicketButton(self.bot)
         await close_button.callback(interaction)
 
-    @app_commands.command(name="average_ticket_duration")
-    async def average_ticket_duration(self, interaction: Interaction) -> None:
-        """Get the average ticket duration for the current year"""
+    @app_commands.command(name="median_ticket_duration")
+    async def median_ticket_duration(self, interaction: Interaction) -> None:
+        """Get the median ticket duration for the current year"""
         await interaction.response.defer(ephemeral=True)
 
         if not self.config:
@@ -1394,7 +1394,7 @@ class DiscordCommands(commands.Cog):
                 "Configuration not loaded. Please contact an administrator.",
                 ephemeral=True,
             )
-            logger.error("Config not loaded in average_ticket_duration")
+            logger.error("Config not loaded in median_ticket_duration")
             return
 
         # check if management
@@ -1424,28 +1424,28 @@ class DiscordCommands(commands.Cog):
             return
 
         try:
-            avg_duration = await DatabaseOperations.average_respond_times()
-            if avg_duration is None or not avg_duration:
+            median_duration = await DatabaseOperations.median_respond_times()
+            if median_duration is None or not median_duration:
                 await interaction.followup.send(
-                    "Failed to calculate average ticket duration or no tickets found.",
+                    "Failed to calculate median ticket duration or no tickets found.",
                     ephemeral=True,
                 )
-                logger.error("Failed to calculate average ticket duration")
+                logger.error("Failed to calculate median ticket duration")
                 return
 
             # Create an embed for each organization
-            for org_id, ticket_types in avg_duration.items():
+            for org_id, ticket_types in median_duration.items():
                 # Try to get the guild name, fallback to ID if not found
                 guild = self.bot.get_guild(org_id)
                 org_name = guild.name if guild else f"Guild ID: {org_id}"
 
                 embed = discord.Embed(
                     title=truncate_text(
-                        f"📊 Average Ticket Duration - {org_name}",
+                        f"📊 Median Ticket Duration - {org_name}",
                         DISCORD_EMBED_TITLE_LIMIT,
                     ),
                     description=truncate_text(
-                        "Average response times by ticket type",
+                        "Median response times by ticket type",
                         DISCORD_EMBED_DESCRIPTION_LIMIT,
                     ),
                     color=discord.Color.blue(),
@@ -1453,7 +1453,7 @@ class DiscordCommands(commands.Cog):
 
                 # Add a field for each ticket type
                 for ticket_type, stats in ticket_types.items():
-                    avg_seconds = stats["average_response_time"]
+                    avg_seconds = stats["median_response_time"]
                     ticket_count = stats["ticket_count"]
 
                     # Convert seconds to a human-readable format
@@ -1468,7 +1468,9 @@ class DiscordCommands(commands.Cog):
                     else:
                         formatted_time = f"{seconds}s"
 
-                    field_value = f"⏱️ **{formatted_time}**\n📋 Tickets: {ticket_count}"
+                    field_value = (
+                        f"⏱️ **{formatted_time}** (median)\n📋 Tickets: {ticket_count}"
+                    )
 
                     embed.add_field(
                         name=truncate_text(
@@ -1486,10 +1488,10 @@ class DiscordCommands(commands.Cog):
 
         except Exception as e:
             logger.error(
-                f"Error calculating average ticket duration: {e}", exc_info=True
+                f"Error calculating median ticket duration: {e}", exc_info=True
             )
             await interaction.followup.send(
-                "An error occurred while calculating average ticket duration.",
+                "An error occurred while calculating median ticket duration.",
                 ephemeral=True,
             )
 
