@@ -1,6 +1,5 @@
 # @author: Panado (yesdotcom), 2026
 
-import asyncio
 import io
 import json
 import logging
@@ -20,14 +19,13 @@ from utils.discord_utils import (
     DISCORD_EMBED_FIELD_NAME_LIMIT,
     DISCORD_EMBED_FIELD_VALUE_LIMIT,
     DISCORD_EMBED_TITLE_LIMIT,
-    DISCORD_MESSAGE_LIMIT,
     CloseTicketButton,
     DiscordCommands,
     TicketResponseTimeoutHandler,
     TicketSupportEmbedManager,
     truncate_text,
 )
-from utils.sql_utils import DatabaseOperations, staff_response_count
+from utils.sql_utils import DatabaseOperations
 
 # Load environment variables
 load_dotenv()
@@ -305,10 +303,14 @@ async def on_message(message: discord.Message):
                 ),
                 color=discord.Color.blue(),
             )
+            default_avatar = (
+                "https://pub-ac6368b6320d4e8bb06d39c4ace57205.r2.dev/"
+                "discord-logo-01-discord-logo-11562849833clsolz2mbc-280419404.png"
+            )
             icon_url = (
                 message.author.display_avatar.url
                 if message.author.display_avatar
-                else "https://pub-ac6368b6320d4e8bb06d39c4ace57205.r2.dev/discord-logo-01-discord-logo-11562849833clsolz2mbc-280419404.png"
+                else default_avatar
             )
             embed.set_author(
                 name=truncate_text(
@@ -460,7 +462,8 @@ async def on_message(message: discord.Message):
 
                                     # Send notification in channel
                                     await ticket_channel.send(
-                                        f"{message.author.mention} has responded. Ticket moved back to active category."
+                                        f"{message.author.mention} has responded."
+                                        " Ticket moved back to active category."
                                     )
                                     logger.info(
                                         f"Moved ticket {ticket_channel.name} back to active category after user response"

@@ -283,7 +283,7 @@ class TicketButton(discord.ui.Button):
             # reason = blacklist_status.get("reason", "No reason provided")
             await safe_interaction_response(
                 interaction,
-                f"You are not allowed to create tickets.",
+                "You are not allowed to create tickets.",
                 ephemeral=True,
             )
             logger.info(
@@ -293,7 +293,6 @@ class TicketButton(discord.ui.Button):
 
         # Get ticket configuration
         ticket_config = self.config["orgs"]["tickets"][self.ticket_type]
-        ticket_icon = ticket_config["ticket_channel_icon"]
 
         # Check if user already has an open ticket
         existing_ticket = await self.check_existing_ticket(
@@ -301,7 +300,7 @@ class TicketButton(discord.ui.Button):
         )
         if existing_ticket:
             await safe_interaction_response(
-                interaction, f"You already have an open ticket.", ephemeral=True
+                interaction, "You already have an open ticket.", ephemeral=True
             )
             logger.info(
                 f"User {user.name} tried to create duplicate {self.ticket_type} ticket"
@@ -448,7 +447,8 @@ class TicketButton(discord.ui.Button):
                 # Notify user if their answer was truncated
                 if len(message.content) > DISCORD_EMBED_FIELD_VALUE_LIMIT:
                     await dm_channel.send(
-                        f"Your answer was too long and has been truncated to {DISCORD_EMBED_FIELD_VALUE_LIMIT} characters."
+                        f"Your answer was too long and has been truncated to"
+                        f" {DISCORD_EMBED_FIELD_VALUE_LIMIT} characters."
                     )
 
                 # Move to next question
@@ -763,7 +763,6 @@ class CloseTicketButton(discord.ui.Button):
         if not interaction.guild:
             logger.error("Interaction guild is None")
             return
-        guild_id = interaction.guild.id
         transcript_result = None
         ticket_metadata = None
 
@@ -821,7 +820,6 @@ class CloseTicketButton(discord.ui.Button):
                         )
 
                         # Get pinned messages info (channel is deleted, use stored data if available)
-                        pinned_content = ""
 
                         log_message = truncate_text(
                             f"<t:{now}:R> {channel_name} \n Duration: {round(ticket_duration, 2)} hours.",
@@ -831,7 +829,7 @@ class CloseTicketButton(discord.ui.Button):
                             content=log_message,
                             file=transcript_file,
                         )
-                        logger.info(f"Logged transcript to log channel")
+                        logger.info("Logged transcript to log channel")
 
                 logger.info("Logging ticket to database")
                 origin_org_guild = ticket_metadata["ticket_config"].get(
@@ -856,7 +854,7 @@ class CloseTicketButton(discord.ui.Button):
                         if success_saving_in_database is None:
                             logger.error("Failed to log ticket to database.")
                         else:
-                            logger.info(f"Logged ticket to database")
+                            logger.info("Logged ticket to database")
                     except Exception as db_error:
                         logger.error(
                             f"Failed to save ticket to database: {db_error}",
@@ -873,7 +871,9 @@ class CloseTicketButton(discord.ui.Button):
 
         else:
             logger.warning(
-                "Transcript generation and closed ticket logging canceled, either due to failed transcript generation or because the ticket owner closed their own ticket."
+                "Transcript generation and closed ticket logging canceled,"
+                " either due to failed transcript generation or because"
+                " the ticket owner closed their own ticket."
             )
 
         # Notify ticket creator after deletion
@@ -1169,7 +1169,7 @@ class TicketTypeSelect(discord.ui.Select):
             edit_success = await safe_channel_edit(channel, name=new_name)
             if not edit_success:
                 logger.warning(
-                    f"Failed to update channel name due to rate limits or errors"
+                    "Failed to update channel name due to rate limits or errors"
                 )
 
         # Update channel topic metadata
@@ -1617,7 +1617,8 @@ class DiscordCommands(commands.Cog):
             )
             timeout_unix = int(time.time()) + timeout * 3600
             await channel.send(
-                f"This ticket is marked as awaiting response and will expire if no response is received <t:{timeout_unix}:R>."
+                f"This ticket is marked as awaiting response and will expire"
+                f" if no response is received <t:{timeout_unix}:R>."
             )
 
             # Acknowledge the interaction
@@ -2010,7 +2011,8 @@ class DiscordCommands(commands.Cog):
                 ephemeral=True,
             )
             logger.warning(
-                f"User {interaction.user.name} ({interaction.user.id}) attempted to use /linked_accounts without permission"
+                f"User {interaction.user.name} ({interaction.user.id})"
+                " attempted to use /linked_accounts without permission"
             )
             return
 
@@ -2054,7 +2056,7 @@ class DiscordCommands(commands.Cog):
                         if user.discriminator != "0"
                         else user.name
                     )
-                except:
+                except Exception:
                     user_mention = f"<@{discord_id}>"
                     user_name = f"User ID: {discord_id}"
 
@@ -2062,7 +2064,8 @@ class DiscordCommands(commands.Cog):
             embed = discord.Embed(
                 title=truncate_text("Linked Accounts", DISCORD_EMBED_TITLE_LIMIT),
                 description=truncate_text(
-                    f"Account information for {user_mention if user_mention else f'ID: `{target_id}`'}",
+                    f"Account information for"
+                    f" {user_mention if user_mention else f'ID: `{target_id}`'}",
                     DISCORD_EMBED_DESCRIPTION_LIMIT,
                 ),
                 color=discord.Color.green(),
@@ -2217,7 +2220,9 @@ class TicketResponseTimeoutHandler(commands.Cog):
                                         )
                                         now = int(discord.utils.utcnow().timestamp())
                                         log_message = truncate_text(
-                                            f"<t:{now}:R> {channel.name} \\n Ticket was closed due to no response received within {timeout_hours} hours.",
+                                            f"<t:{now}:R> {channel.name} \\n Ticket was"
+                                            f" closed due to no response received within"
+                                            f" {timeout_hours} hours.",
                                             DISCORD_MESSAGE_LIMIT,
                                         )
                                         await log_ch.send(
@@ -2225,7 +2230,8 @@ class TicketResponseTimeoutHandler(commands.Cog):
                                             file=transcript_file,
                                         )
                                         logger.info(
-                                            f"Sent transcript for {channel.name} to log channel after awaiting response timeout"
+                                            f"Sent transcript for {channel.name} to log"
+                                            " channel after awaiting response timeout"
                                         )
                 except Exception as e:
                     logger.error(
