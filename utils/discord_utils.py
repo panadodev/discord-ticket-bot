@@ -13,8 +13,8 @@ from discord import Interaction, app_commands
 from discord.ext import commands, tasks
 from dotenv import load_dotenv
 
-from utils.sql_utils import DatabaseOperations
 from utils.check_linked_accounts import get_linked_accounts
+from utils.sql_utils import DatabaseOperations
 
 load_dotenv()
 

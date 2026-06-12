@@ -14,17 +14,12 @@ from dotenv import load_dotenv
 from sentry_sdk.integrations.logging import EventHandler
 from tortoise import Tortoise
 
-from utils.discord_utils import (
-    DISCORD_EMBED_DESCRIPTION_LIMIT,
-    DISCORD_EMBED_FIELD_NAME_LIMIT,
-    DISCORD_EMBED_FIELD_VALUE_LIMIT,
-    DISCORD_EMBED_TITLE_LIMIT,
-    CloseTicketButton,
-    DiscordCommands,
-    TicketResponseTimeoutHandler,
-    TicketSupportEmbedManager,
-    truncate_text,
-)
+from utils.discord_utils import (DISCORD_EMBED_DESCRIPTION_LIMIT,
+                                 DISCORD_EMBED_FIELD_NAME_LIMIT,
+                                 DISCORD_EMBED_FIELD_VALUE_LIMIT,
+                                 DISCORD_EMBED_TITLE_LIMIT, CloseTicketButton,
+                                 DiscordCommands, TicketResponseTimeoutHandler,
+                                 TicketSupportEmbedManager, truncate_text)
 from utils.sql_utils import DatabaseOperations
 
 # Load environment variables
@@ -71,7 +66,9 @@ class TicketBot(commands.Bot):
 
 
 # Initialize Discord bot
-intents = discord.Intents.all()
+intents = discord.Intents.default()
+intents.message_content = True
+intents.members = True  # privileged: guild.get_member() cache lookups
 bot = TicketBot(command_prefix="", intents=intents, help_command=None)
 
 
@@ -247,7 +244,8 @@ async def on_message(message: discord.Message):
             logger.warning(f"Failed to add reaction to greeting: {e}")
 
     # Import needed utilities
-    from utils.discord_utils import find_user_ticket, load_config, users_in_process
+    from utils.discord_utils import (find_user_ticket, load_config,
+                                     users_in_process)
 
     config = load_config()
     if not config:
