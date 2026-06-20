@@ -36,19 +36,20 @@
                     "support": 868672414693875744,
                     "management": 868661502108925993
                 },
-                "guild": 798932514324217888
+                "guild": 798932514324217888,
+                "tickets_cat": 1466379561590849752
             },
             "sanc": {
                 "roles": {
                     "support": 1466380422102384673,
                     "management": 868661502108925993
                 },
-                "guild": 621739404154634240
+                "guild": 621739404154634240,
+                "tickets_cat": 1517964890940112987
             },
             "tickets": {
                 "support": {
                     "log_channel": 1222026130727501894,
-                    "ticket_category": 1466379561590849752,
                     "button_name": "Support Ticket",
                     "button_id": "support_ticket",
                     "button_style": "SUCCESS",
@@ -72,7 +73,6 @@
                 },
                 "player_report": {
                     "log_channel": 1033378494702428271,
-                    "ticket_category": 1466379561590849752,
                     "button_name": "Player Report",
                     "button_id": "player_report",
                     "button_style": "DANGER",
@@ -96,7 +96,6 @@
                 },
                 "ban_appeals": {
                     "log_channel": 1033378507163713668,
-                    "ticket_category": 1466379561590849752,
                     "button_name": "Ban Appeal",
                     "button_id": "ban_appeal",
                     "button_style": "PRIMARY",
@@ -116,7 +115,6 @@
                 },
                 "mute_appeals": {
                     "log_channel": 1394801361857806347,
-                    "ticket_category": 1466379561590849752,
                     "button_name": "Mute Appeal",
                     "button_id": "mute_appeal",
                     "button_style": "PRIMARY",
@@ -138,7 +136,6 @@
                 },
                 "staff_application": {
                     "log_channel": 1033378546015543296,
-                    "ticket_category": 1472929113064083687,
                     "button_name": "Staff Application",
                     "button_id": "staff_application",
                     "button_style": "PRIMARY",
@@ -160,7 +157,6 @@
                 },
                 "vip_related": {
                     "log_channel": 1033378515816550512,
-                    "ticket_category": 1472929113064083687,
                     "button_name": "VIP Related",
                     "button_id": "vip_related",
                     "button_style": "PRIMARY",

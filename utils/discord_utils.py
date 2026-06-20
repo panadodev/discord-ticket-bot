@@ -64,6 +64,21 @@ def load_config() -> Optional[dict]:
         return None
 
 
+def get_org_ticket_category_id(config: dict, source_guild_id: Optional[int]) -> Optional[int]:
+    """Resolve the ticket category for a source guild using orgs.<org>.tickets_cat."""
+    if not source_guild_id:
+        return None
+
+    orgs_config = config.get("orgs", {}) if config else {}
+    for org_name, org_data in orgs_config.items():
+        if org_name == "tickets":
+            continue
+        if org_data.get("guild") == source_guild_id:
+            return org_data.get("tickets_cat")
+
+    return None
+
+
 # ============================================================================
 # Discord Rate Limit Safe Helper Functions
 # ============================================================================
@@ -472,11 +487,15 @@ class TicketButton(discord.ui.Button):
         source_org_id: int,
     ) -> None:
         """Create the ticket channel with proper permissions and summary"""
-        # Get categories from ticket config
-        incoming_cat_id = ticket_config.get("ticket_category")
+        # Resolve incoming category from the source org configuration
+        incoming_cat_id = get_org_ticket_category_id(self.config, source_org_id)
         if not incoming_cat_id:
-            logger.error("Ticket category ID not configured for this ticket type.")
-            raise ValueError("Ticket category ID not configured for this ticket type.")
+            logger.error(
+                f"No org ticket category configured for source guild {source_org_id}."
+            )
+            raise ValueError(
+                f"No org ticket category configured for source guild {source_org_id}."
+            )
         incoming_category = guild.get_channel(incoming_cat_id)
 
         # Create channel name: tickettype-username-org-dcid
@@ -1116,8 +1135,8 @@ class TicketTypeSelect(discord.ui.Select):
 
         # Update channel permissions
         try:
-            # Get the new ticket category
-            new_category_id = ticket_config.get("ticket_category")
+            # Move ticket to the source org category
+            new_category_id = get_org_ticket_category_id(self.config, source_guild_id)
             new_category = None
             if new_category_id:
                 new_category = guild.get_channel(new_category_id)

@@ -244,7 +244,8 @@ async def on_message(message: discord.Message):
             logger.warning(f"Failed to add reaction to greeting: {e}")
 
     # Import needed utilities
-    from utils.discord_utils import (find_user_ticket, load_config,
+    from utils.discord_utils import (find_user_ticket,
+                                     get_org_ticket_category_id, load_config,
                                      users_in_process)
 
     config = load_config()
@@ -422,58 +423,52 @@ async def on_message(message: discord.Message):
                     if ticket_metadata.get("ticket_config", {}).get(
                         "awaiting_response", False
                     ):
-                        # Get ticket type and find the normal category
-                        ticket_type = ticket_metadata["ticket_config"].get(
-                            "ticket_type"
+                        source_guild_id = ticket_metadata["ticket_config"].get(
+                            "ticket_from_guild"
                         )
-                        if ticket_type:
-                            # Get the normal ticket category from config
-                            ticket_config = (
-                                config.get("orgs", {})
-                                .get("tickets", {})
-                                .get(ticket_type, {})
-                            )
-                            normal_category_id = ticket_config.get("ticket_category")
+                        normal_category_id = get_org_ticket_category_id(
+                            config, source_guild_id
+                        )
 
-                            if normal_category_id:
-                                normal_category = bot.get_channel(normal_category_id)
-                                if normal_category and isinstance(
-                                    normal_category, discord.CategoryChannel
+                        if normal_category_id:
+                            normal_category = bot.get_channel(normal_category_id)
+                            if normal_category and isinstance(
+                                normal_category, discord.CategoryChannel
+                            ):
+                                # Update metadata - remove awaiting response flags
+                                ticket_metadata["ticket_config"][
+                                    "awaiting_response"
+                                ] = False
+                                if (
+                                    "awaiting_response_set_at"
+                                    in ticket_metadata["ticket_config"]
                                 ):
-                                    # Update metadata - remove awaiting response flags
-                                    ticket_metadata["ticket_config"][
-                                        "awaiting_response"
-                                    ] = False
-                                    if (
+                                    del ticket_metadata["ticket_config"][
                                         "awaiting_response_set_at"
-                                        in ticket_metadata["ticket_config"]
-                                    ):
-                                        del ticket_metadata["ticket_config"][
-                                            "awaiting_response_set_at"
-                                        ]
+                                    ]
 
-                                    # Move channel back to normal category and update topic
-                                    await ticket_channel.edit(
-                                        category=normal_category,
-                                        topic=json.dumps(ticket_metadata),
-                                    )
+                                # Move channel back to normal category and update topic
+                                await ticket_channel.edit(
+                                    category=normal_category,
+                                    topic=json.dumps(ticket_metadata),
+                                )
 
-                                    # Send notification in channel
-                                    await ticket_channel.send(
-                                        f"{message.author.mention} has responded."
-                                        " Ticket moved back to active category."
-                                    )
-                                    logger.info(
-                                        f"Moved ticket {ticket_channel.name} back to active category after user response"
-                                    )
-                                else:
-                                    logger.warning(
-                                        f"Could not find normal category with ID {normal_category_id}"
-                                    )
+                                # Send notification in channel
+                                await ticket_channel.send(
+                                    f"{message.author.mention} has responded."
+                                    " Ticket moved back to active category."
+                                )
+                                logger.info(
+                                    f"Moved ticket {ticket_channel.name} back to active category after user response"
+                                )
                             else:
                                 logger.warning(
-                                    f"No ticket_category found in config for ticket type {ticket_type}"
+                                    f"Could not find normal org category with ID {normal_category_id}"
                                 )
+                        else:
+                            logger.warning(
+                                f"No org ticket category found for source guild {source_guild_id}"
+                            )
                 except json.JSONDecodeError:
                     logger.warning(
                         f"Failed to parse ticket metadata from {ticket_channel.name}"
