@@ -76,7 +76,6 @@ class DatabaseOperations:
     async def log_tickets(
         origin_org_guild: int,
         ticket_type: str,
-        transcript: str,
         closed_by: int,
         opened_by: int,
         made_at: int,
@@ -85,7 +84,7 @@ class DatabaseOperations:
         success = await tickets.create(
             origin_org_guild=origin_org_guild,
             ticket_type=ticket_type,
-            transcript=transcript,
+            transcript=None,
             closed_by=closed_by,
             opened_by=opened_by,
             created_by=created_by,

@@ -911,7 +911,6 @@ class CloseTicketButton(discord.ui.Button):
                             await DatabaseOperations.log_tickets(
                                 origin_org_guild=origin_org_guild,
                                 ticket_type=ticket_type,
-                                transcript=transcript_result,
                                 closed_by=interaction.user.id,
                                 opened_by=ticket_owner_id,
                                 made_at=ticket_metadata["ticket_config"]["created_at"],
@@ -2262,7 +2261,6 @@ class TicketResponseTimeoutHandler(commands.Cog):
                                     ticket_type=ticket_metadata["ticket_config"][
                                         "ticket_type"
                                     ],
-                                    transcript=transcript_result,
                                     closed_by=self.bot.user.id if self.bot.user else 0,
                                     opened_by=ticket_owner_id,
                                     made_at=ticket_metadata["ticket_config"][
