@@ -397,6 +397,56 @@ class TicketButton(discord.ui.Button):
         dm_channel = await user.create_dm()
         answers = []
 
+        # Show ToS the first time a user ever opens a ticket
+        if not await DatabaseOperations.check_tos_accepted(user.id):
+            tos_embed = discord.Embed(
+                title="📋 Archipel Network — Terms of Service & Privacy Policy",
+                description=(
+                    "Before opening a ticket, please read and accept the following terms.\n\n"
+                    "**Data Collection & Recording**\n"
+                    "• All messages sent within tickets — including your questions, answers, and any staff responses — are **recorded and stored** in our database.\n"
+                    "• Ticket transcripts are retained for moderation, appeal, and quality-assurance purposes.\n\n"
+                    "**Data Sharing**\n"
+                    "• Your ticket data is **never shared** with any party outside of the **Archipel Network**.\n"
+                    "• Only authorised Archipel Network staff with the appropriate roles can view ticket contents.\n\n"
+                    "**Usage Rules**\n"
+                    "• Do not abuse the ticket system or submit false reports.\n"
+                    "• Treat staff respectfully; abuse may result in a permanent restriction from creating tickets.\n\n"
+                    "---\n"
+                    "Type **`I agree`** to accept these terms and continue, or `cancel` to cancel."
+                ),
+                color=discord.Color.yellow(),
+            )
+            tos_embed.set_footer(text="Archipel Network • Your data stays within our community.")
+            await dm_channel.send(embed=tos_embed)
+
+            def tos_check(m):
+                return m.author == user and m.channel == dm_channel
+
+            while True:
+                try:
+                    tos_msg = await self.bot.wait_for(
+                        "message", check=tos_check, timeout=600.0
+                    )
+                except asyncio.TimeoutError:
+                    await dm_channel.send("Ticket creation timed out. Please try again.")
+                    logger.info(f"ToS acceptance timed out for {user.name}")
+                    return None
+
+                if tos_msg.content.lower() == "cancel":
+                    await dm_channel.send("Ticket creation cancelled.")
+                    logger.info(f"User {user.name} cancelled at ToS prompt")
+                    return None
+
+                if tos_msg.content.strip().lower() == "i agree":
+                    await DatabaseOperations.set_tos_accepted(user.id)
+                    logger.info(f"User {user.name} ({user.id}) accepted ToS")
+                    break
+
+                await dm_channel.send(
+                    "Please type **`I agree`** to accept the terms and continue, or `cancel` to cancel."
+                )
+
         welcome_dm = self.config.get("welcome_dm")
         if welcome_dm:
             await dm_channel.send(truncate_text(welcome_dm, DISCORD_MESSAGE_LIMIT))

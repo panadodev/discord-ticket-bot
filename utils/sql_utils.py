@@ -61,6 +61,14 @@ class linked_accounts(Model):
     created_at = fields.IntField(null=False)
 
 
+class tos_accepted(Model):
+    class Meta:
+        table = "tos_accepted"
+
+    user_id = fields.BigIntField(pk=True)
+    accepted_at = fields.IntField(null=False)
+
+
 # SQL :
 class DatabaseOperations:
 
@@ -309,3 +317,15 @@ class DatabaseOperations:
                 created_at=int(time.time()),
             )
             return new_record
+
+    @staticmethod
+    async def check_tos_accepted(user_id: int) -> bool:
+        record = await tos_accepted.get_or_none(user_id=user_id)
+        return record is not None
+
+    @staticmethod
+    async def set_tos_accepted(user_id: int):
+        await tos_accepted.get_or_create(
+            user_id=user_id,
+            defaults={"accepted_at": int(time.time())},
+        )
