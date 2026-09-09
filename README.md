@@ -1,4 +1,4 @@
-# Archipel [Ticket Bot Configuration](https://github.com/neoArchipel/ticket-bot/blob/main/config.json) Guide
+# Ticket Bot Configuration Guide
 
 ## Environment Setup
 
