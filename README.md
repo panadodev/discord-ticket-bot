@@ -1,5 +1,11 @@
 # Archipel [Ticket Bot Configuration](https://github.com/neoArchipel/ticket-bot/blob/main/config.json) Guide
 
+## Environment Setup
+
+Copy [.env.example](.env.example) to `.env` and fill in your bot token, config path, and database URI before starting the bot.
+
+If you keep your real bot settings outside the repo, set `CONFIG_PATH` to that file. Otherwise the bot will load [`config.json`](config.json) from the repository root.
+
 ## Features
 
 ### FAQ System

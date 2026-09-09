@@ -13,7 +13,6 @@ from discord import Interaction, app_commands
 from discord.ext import commands, tasks
 from dotenv import load_dotenv
 
-from utils.check_linked_accounts import get_linked_accounts
 from utils.sql_utils import DatabaseOperations
 
 load_dotenv()
@@ -38,29 +37,42 @@ def truncate_text(text: str, max_length: int, suffix: str = "...") -> str:
     return text[: max_length - len(suffix)] + suffix
 
 
+def get_config_path() -> str:
+    """Resolve the config file path from CONFIG_PATH or the repository root."""
+    config_path = os.getenv("CONFIG_PATH")
+    if config_path:
+        return config_path
+
+    return os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "..", "config.json")
+    )
+
+
 def load_config() -> Optional[dict]:
-    """Load configuration from config.json"""
+    """Load configuration from the configured config file."""
     try:
-        if not os.path.exists("config.json"):
-            logger.error("config.json file not found")
+        config_path = get_config_path()
+
+        if not os.path.exists(config_path):
+            logger.error(f"Config file not found: {config_path}")
             return None
 
-        with open("config.json", "r", encoding="utf-8") as f:
+        with open(config_path, "r", encoding="utf-8") as f:
             data = json.load(f)
             config = data.get("config")
 
         if not config:
             logger.error(
-                "Failed to load configuration from config.json - 'config' key missing"
+                f"Failed to load configuration from {config_path} - 'config' key missing"
             )
             return None
 
         return config
     except json.JSONDecodeError as e:
-        logger.error(f"Failed to parse config.json: {e}")
+        logger.error(f"Failed to parse config file: {e}")
         return None
     except Exception as e:
-        logger.error(f"Error loading config.json: {e}")
+        logger.error(f"Error loading config: {e}")
         return None
 
 
@@ -702,25 +714,6 @@ class TicketButton(discord.ui.Button):
                 value=truncate_text(answer, DISCORD_EMBED_FIELD_VALUE_LIMIT),
                 inline=False,
             )
-
-        # Check for linked Steam accounts if configured
-        if ticket_config.get("check_for_steamid_linked", False):
-            try:
-                linked_data = await get_linked_accounts(user.id)
-                if linked_data:
-                    steam_id = linked_data.get("steam_id")
-                    if steam_id:
-                        embed.add_field(
-                            name="Linked Steam ID",
-                            value=str(steam_id),
-                            inline=False,
-                        )
-                        logger.info(
-                            f"Found linked Steam ID {steam_id} for user {user.name}"
-                        )
-
-            except Exception as e:
-                logger.warning(f"Failed to fetch linked Steam ID for {user.name}: {e}")
 
         # Create close button view
         close_button = CloseTicketButton(self.bot)
@@ -2056,144 +2049,6 @@ class DiscordCommands(commands.Cog):
                 "An error occurred while removing the user from the blacklist.",
                 ephemeral=True,
             )
-
-    @app_commands.command(name="linked_accounts")
-    @app_commands.describe(
-        user_id="Discord ID or Steam ID to fetch linked accounts for"
-    )
-    async def linked_accounts(self, interaction: Interaction, user_id: str):
-        """Fetch linked accounts for a given Discord or Steam ID"""
-        await interaction.response.defer(ephemeral=True)
-
-        # Check if user has permission to use this command
-        if not isinstance(interaction.user, discord.Member):
-            await interaction.followup.send(
-                "This command can only be used in a server.",
-                ephemeral=True,
-            )
-            return
-
-        if not self.check_linked_accounts_permission(interaction.user):
-            await interaction.followup.send(
-                "You do not have permission to use this command.",
-                ephemeral=True,
-            )
-            logger.warning(
-                f"User {interaction.user.name} ({interaction.user.id})"
-                " attempted to use /linked_accounts without permission"
-            )
-            return
-
-        # Validate and convert user_id to int
-        try:
-            target_id = int(user_id)
-        except ValueError:
-            await interaction.followup.send(
-                "Invalid ID. Please provide a valid Discord ID or Steam ID.",
-                ephemeral=True,
-            )
-            return
-
-        try:
-            # Fetch from API - works with both Discord and Steam IDs
-            api_data = await get_linked_accounts(target_id)
-
-            if not api_data:
-                await interaction.followup.send(
-                    f"No linked accounts found for ID: `{target_id}`",
-                    ephemeral=True,
-                )
-                return
-
-            # Extract Discord and Steam IDs from API response
-            discord_id = api_data.get("discord_id")
-            steam_id = api_data.get("steam_id")
-
-            # Convert single steam_id to list for consistent handling
-            steam_ids = [steam_id] if steam_id else []
-
-            # Try to fetch the Discord user object if we have a Discord ID
-            user_mention = None
-            user_name = None
-            if discord_id:
-                try:
-                    user = await self.bot.fetch_user(discord_id)
-                    user_mention = user.mention
-                    user_name = (
-                        f"{user.name}#{user.discriminator}"
-                        if user.discriminator != "0"
-                        else user.name
-                    )
-                except Exception:
-                    user_mention = f"<@{discord_id}>"
-                    user_name = f"User ID: {discord_id}"
-
-            # Build the embed
-            embed = discord.Embed(
-                title=truncate_text("Linked Accounts", DISCORD_EMBED_TITLE_LIMIT),
-                description=truncate_text(
-                    f"Account information for"
-                    f" {user_mention if user_mention else f'ID: `{target_id}`'}",
-                    DISCORD_EMBED_DESCRIPTION_LIMIT,
-                ),
-                color=discord.Color.green(),
-            )
-
-            # Add Discord user info if available
-            if discord_id and user_name:
-                embed.add_field(
-                    name=truncate_text("Discord User", DISCORD_EMBED_FIELD_NAME_LIMIT),
-                    value=truncate_text(user_name, DISCORD_EMBED_FIELD_VALUE_LIMIT),
-                    inline=False,
-                )
-                embed.add_field(
-                    name=truncate_text("Discord ID", DISCORD_EMBED_FIELD_NAME_LIMIT),
-                    value=truncate_text(
-                        f"`{discord_id}`", DISCORD_EMBED_FIELD_VALUE_LIMIT
-                    ),
-                    inline=False,
-                )
-            elif discord_id:
-                embed.add_field(
-                    name=truncate_text("Discord ID", DISCORD_EMBED_FIELD_NAME_LIMIT),
-                    value=truncate_text(
-                        f"`{discord_id}`", DISCORD_EMBED_FIELD_VALUE_LIMIT
-                    ),
-                    inline=False,
-                )
-
-            # Add Steam ID
-            if steam_ids:
-                steam_ids_text = "\n".join([f"`{sid}`" for sid in steam_ids])
-                embed.add_field(
-                    name=truncate_text(
-                        f"Steam ID{'s' if len(steam_ids) > 1 else ''}",
-                        DISCORD_EMBED_FIELD_NAME_LIMIT,
-                    ),
-                    value=truncate_text(
-                        steam_ids_text, DISCORD_EMBED_FIELD_VALUE_LIMIT
-                    ),
-                    inline=False,
-                )
-            else:
-                embed.add_field(
-                    name=truncate_text("Steam ID", DISCORD_EMBED_FIELD_NAME_LIMIT),
-                    value=truncate_text("None", DISCORD_EMBED_FIELD_VALUE_LIMIT),
-                    inline=False,
-                )
-
-            await interaction.followup.send(embed=embed, ephemeral=True)
-
-        except Exception as e:
-            logger.error(
-                f"Error fetching linked accounts for ID {target_id}: {e}",
-                exc_info=True,
-            )
-            await interaction.followup.send(
-                "An error occurred while fetching linked accounts.",
-                ephemeral=True,
-            )
-
 
 class TicketResponseTimeoutHandler(commands.Cog):
     def __init__(self, bot: commands.Bot):

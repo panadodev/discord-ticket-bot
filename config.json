@@ -1,15 +1,15 @@
 {
     "config": {
-        "main_guild_id": 868656215834624020,
+        "main_guild_id": 123456789012345678,
         "ticket_support_channels": [
-            1465341246771036345,
-            1466405884153434182,
-            1465047875581903074
+            123456789012345679,
+            123456789012345680,
+            123456789012345681
         ],
         "awaiting_response_timeout": 48,
-        "awaiting_response_category": 1476016370503123036,
-        "welcome_dm": "**Ticket Creation Process**\n* Avoid long answers. \n* You have 10 minutes to respond to each question.\n* Respect staff members (Will not tolerate any abuse)\n* Type `cancel` to cancel the ticket creation.",
-        "ticket_created_message": "Your ticket has been created! Server staff will only respond if they need more information.",
+        "awaiting_response_category": 123456789012345682,
+        "welcome_dm": "**Ticket Creation Process**\n* Keep answers concise.\n* Reply within the allotted time for each question.\n* Be respectful to staff members.\n* Type `cancel` to stop ticket creation.",
+        "ticket_created_message": "Your ticket has been created. Staff will respond if they need more information.",
         "allowed_to_check_linked_accounts": [
             "management",
             "senior_admin"
@@ -17,39 +17,39 @@
         "faq": {
             "questions": [
                 {
-                    "question": "console server, console servers, willjums console, console rust, server for console, servers for console, console server for rust",
-                    "answer": "We do not have any console servers."
+                    "question": "example topic one, sample topic one",
+                    "answer": "Example answer one."
                 },
                 {
-                    "question": "willjum pc specs, willjum pc spec, willjum's pc specs, willjum's computer specs",
-                    "answer": "120gb ram (mostly for editing, rendering)\nGraphics- geforce Nvidia rtx 5090\nCpu-  amd Ryzen 7 9800 x3d"
+                    "question": "example topic two, sample topic two",
+                    "answer": "Example answer two."
                 }
             ]
         },
         "orgs": {
-            "willjum": {
+            "example_org_a": {
                 "roles": {
-                    "trial_admin": 1449428155939950704,
-                    "trainee_admin": 1256345226008592425,
-                    "admin": 868671890493964328,
-                    "senior_admin": 868661503149080636,
-                    "support": 868672414693875744,
-                    "management": 868661502108925993
+                    "trial_admin": 123456789012345683,
+                    "trainee_admin": 123456789012345684,
+                    "admin": 123456789012345685,
+                    "senior_admin": 123456789012345686,
+                    "support": 123456789012345687,
+                    "management": 123456789012345688
                 },
-                "guild": 798932514324217888,
-                "tickets_cat": 1466379561590849752
+                "guild": 123456789012345689,
+                "tickets_cat": 123456789012345690
             },
-            "sanc": {
+            "example_org_b": {
                 "roles": {
-                    "support": 1466380422102384673,
-                    "management": 868661502108925993
+                    "support": 123456789012345691,
+                    "management": 123456789012345688
                 },
-                "guild": 621739404154634240,
-                "tickets_cat": 1517964890940112987
+                "guild": 123456789012345692,
+                "tickets_cat": 123456789012345693
             },
             "tickets": {
                 "support": {
-                    "log_channel": 1222026130727501894,
+                    "log_channel": 123456789012345694,
                     "button_name": "Support Ticket",
                     "button_id": "support_ticket",
                     "button_style": "SUCCESS",
@@ -64,15 +64,15 @@
                         "senior_admin"
                     ],
                     "questions": [
-                        "What is your steam id or the name of the server (Optional):",
+                        "What is your issue?",
                         "Please describe your issue:"
                     ],
                     "check_for_steamid_provided": false,
                     "check_for_steamid_linked": false,
-                    "find_steam_id": "Find your own steam id please[:](https://pub-ac6368b6320d4e8bb06d39c4ace57205.r2.dev/findownsteamid.png)"
+                    "find_steam_id": "Example steam ID help link[:](https://example.com/find-own-steam-id.png)"
                 },
                 "player_report": {
-                    "log_channel": 1033378494702428271,
+                    "log_channel": 123456789012345695,
                     "button_name": "Player Report",
                     "button_id": "player_report",
                     "button_style": "DANGER",
@@ -86,16 +86,16 @@
                         "senior_admin"
                     ],
                     "questions": [
-                        "Please provide the steam id/s of the user/s you are reporting (Not optional):",
-                        "On which server are they (Example: EU Casual, NA solo):",
-                        "Why are they being reported:"
+                        "Please provide the player ID or name you are reporting:",
+                        "Which server are they on?",
+                        "Why are they being reported?"
                     ],
                     "check_for_steamid_provided": true,
                     "check_for_steamid_linked": false,
-                    "find_steam_id": "Press F7 in game and click on the *copy* button next to the steam id[:](https://pub-ac6368b6320d4e8bb06d39c4ace57205.r2.dev/findothersteamid.png)"
+                    "find_steam_id": "Example report help link[:](https://example.com/find-other-steam-id.png)"
                 },
                 "ban_appeals": {
-                    "log_channel": 1033378507163713668,
+                    "log_channel": 123456789012345696,
                     "button_name": "Ban Appeal",
                     "button_id": "ban_appeal",
                     "button_style": "PRIMARY",
@@ -106,15 +106,15 @@
                         "senior_admin"
                     ],
                     "questions": [
-                        "Submit your own steam id (Not optional):",
-                        "What ban are you appealing for and why:"
+                        "Submit your account ID:",
+                        "What ban are you appealing and why?"
                     ],
                     "check_for_steamid_provided": true,
                     "check_for_steamid_linked": true,
-                    "find_steam_id": "Find your own steam id please[:](https://pub-ac6368b6320d4e8bb06d39c4ace57205.r2.dev/findownsteamid.png)"
+                    "find_steam_id": "Example ban appeal help link[:](https://example.com/find-own-steam-id.png)"
                 },
                 "mute_appeals": {
-                    "log_channel": 1394801361857806347,
+                    "log_channel": 123456789012345697,
                     "button_name": "Mute Appeal",
                     "button_id": "mute_appeal",
                     "button_style": "PRIMARY",
@@ -127,15 +127,15 @@
                         "support"
                     ],
                     "questions": [
-                        "Submit your own steam id (Not optional):",
-                        "Why do you believe you were muted:"
+                        "Submit your account ID:",
+                        "Why do you believe you were muted?"
                     ],
                     "check_for_steamid_provided": true,
                     "check_for_steamid_linked": true,
-                    "find_steam_id": "Find your own steam id please[:](https://pub-ac6368b6320d4e8bb06d39c4ace57205.r2.dev/findownsteamid.png)"
+                    "find_steam_id": "Example mute appeal help link[:](https://example.com/find-own-steam-id.png)"
                 },
                 "staff_application": {
-                    "log_channel": 1033378546015543296,
+                    "log_channel": 123456789012345698,
                     "button_name": "Staff Application",
                     "button_id": "staff_application",
                     "button_style": "PRIMARY",
@@ -145,18 +145,18 @@
                         "management"
                     ],
                     "questions": [
-                        "Please submit your steam id (Not optional):",
+                        "Please submit your account ID:",
                         "How old are you?",
-                        "Which position and why do you want to join our staff team?",
+                        "Which position do you want to apply for and why?",
                         "What prior experience do you have?",
                         "How many hours can you dedicate weekly?"
                     ],
                     "check_for_steamid_provided": true,
                     "check_for_steamid_linked": true,
-                    "find_steam_id": "Find your own steam id please[:](https://pub-ac6368b6320d4e8bb06d39c4ace57205.r2.dev/findownsteamid.png)"
+                    "find_steam_id": "Example staff application help link[:](https://example.com/find-own-steam-id.png)"
                 },
                 "vip_related": {
-                    "log_channel": 1033378515816550512,
+                    "log_channel": 123456789012345699,
                     "button_name": "VIP Related",
                     "button_id": "vip_related",
                     "button_style": "PRIMARY",
@@ -166,12 +166,12 @@
                         "management"
                     ],
                     "questions": [
-                        "Please submit your steam id if relevant (Optional):",
+                        "Please submit your account ID if relevant (optional):",
                         "Please describe your issue:"
                     ],
                     "check_for_steamid_provided": false,
                     "check_for_steamid_linked": true,
-                    "find_steam_id": "Find your own steam id please[:](https://pub-ac6368b6320d4e8bb06d39c4ace57205.r2.dev/findownsteamid.png)"
+                    "find_steam_id": "Example VIP help link[:](https://example.com/find-own-steam-id.png)"
                 }
             }
         }
